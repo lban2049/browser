@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Building from Source - lightpanda-browser</title>
+  <meta name="description" content="">
+  <meta property="og:title" content="Building from Source">
+  <meta property="og:description" content="">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="../../assets/docsmith.css">
+  <link rel="stylesheet" href="../../assets/theme.css">
+  <script src="../../assets/nav.js" defer></script>
+  <script>
+    // Initialize theme from localStorage or system preference
+    (function() {
+      const stored = localStorage.getItem('docsmith-theme');
+      if (stored) {
+        document.documentElement.setAttribute('data-theme', stored);
+      } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    })();
+
+    function toggleTheme() {
+      const html = document.documentElement;
+      const current = html.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      localStorage.setItem('docsmith-theme', next);
+    }
+  </script>
+</head>
+<body data-ds-path="/building">
+  <header data-ds="header">
+    <a href="/en/index.html" class="site-title">lightpanda-browser</a>
+    <div class="header-controls">
+      
+    <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
+      <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="5"></circle>
+        <line x1="12" y1="1" x2="12" y2="3"></line>
+        <line x1="12" y1="21" x2="12" y2="23"></line>
+        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+        <line x1="1" y1="12" x2="3" y2="12"></line>
+        <line x1="21" y1="12" x2="23" y2="12"></line>
+        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+      </svg>
+      <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+      </svg>
+    </button>
+    </div>
+  </header>
+  <div data-ds="layout">
+    <aside data-ds="sidebar"><!-- nav.js 渲染 --></aside>
+    <main data-ds="content"><h1 id="building-from-source" tabindex="-1">Building from Source <a class="header-anchor" href="#building-from-source" aria-hidden="true">#</a></h1>
+<p>Lightpanda Browser is written in <a href="https://ziglang.org/">Zig</a> and depends on several native libraries including V8, libcurl, and html5ever. This guide walks through installing prerequisites, building the browser, and configuring development options.</p>
+<blockquote>
+<p><strong>Prerequisites:</strong> Before building, make sure you are comfortable with command-line development tools. See <a href="overview.html">Overview</a> for an introduction to the project.</p>
+</blockquote>
+<hr>
+<h2 id="system-requirements" tabindex="-1">System Requirements <a class="header-anchor" href="#system-requirements" aria-hidden="true">#</a></h2>
+<p>Building Lightpanda requires the following core tools:</p>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Version</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Zig</strong></td>
+<td>0.15.2 (exact)</td>
+<td>Primary build system and language</td>
+</tr>
+<tr>
+<td><strong>Rust</strong></td>
+<td>stable</td>
+<td>Required for html5ever HTML parser</td>
+</tr>
+<tr>
+<td><strong>Git</strong></td>
+<td>any recent</td>
+<td>Cloning the repository</td>
+</tr>
+<tr>
+<td><strong>Make</strong></td>
+<td>any recent</td>
+<td>Convenience build targets</td>
+</tr>
+</tbody>
+</table>
+<p>Zig must be installed at exactly version <strong>0.15.2</strong>. Other versions are not guaranteed to work because Zig does not yet have a stable ABI.</p>
+<h2 id="platform-specific-dependencies" tabindex="-1">Platform-Specific Dependencies <a class="header-anchor" href="#platform-specific-dependencies" aria-hidden="true">#</a></h2>
+<h3 id="debian-%2F-ubuntu" tabindex="-1">Debian / Ubuntu <a class="header-anchor" href="#debian-%2F-ubuntu" aria-hidden="true">#</a></h3>
+<p>Install the system packages needed to compile V8 and other native dependencies:</p>
+<pre><code class="language-bash">sudo apt install xz-utils ca-certificates \
+    pkg-config libglib2.0-dev \
+    clang make curl git
+</code></pre>
+<p>Then install Rust via the official installer:</p>
+<pre><code class="language-bash">curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+</code></pre>
+<h3 id="macos" tabindex="-1">macOS <a class="header-anchor" href="#macos" aria-hidden="true">#</a></h3>
+<p>On macOS, you need CMake (for BoringSSL) and Rust:</p>
+<pre><code class="language-bash">brew install cmake
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+</code></pre>
+<p>Xcode Command Line Tools must also be installed. If you have not already done so:</p>
+<pre><code class="language-bash">xcode-select --install
+</code></pre>
+<h3 id="nix" tabindex="-1">Nix <a class="header-anchor" href="#nix" aria-hidden="true">#</a></h3>
+<p>If you use Nix, the project includes a <code>flake.nix</code> that provides a complete development shell with all dependencies:</p>
+<pre><code class="language-bash">nix develop
+</code></pre>
+<p>This sets up a FHS-compliant environment containing Zig 0.15.2, Rust, Python 3, CMake, pkg-config, GCC, and all required libraries (expat, glib, glibc, zlib). No additional manual installation is needed.</p>
+<hr>
+<h2 id="cloning-the-repository" tabindex="-1">Cloning the Repository <a class="header-anchor" href="#cloning-the-repository" aria-hidden="true">#</a></h2>
+<pre><code class="language-bash">git clone https://github.com/lightpanda-io/browser.git
+cd browser
+</code></pre>
+<hr>
+<h2 id="build-commands" tabindex="-1">Build Commands <a class="header-anchor" href="#build-commands" aria-hidden="true">#</a></h2>
+<h3 id="quick-build-with-make" tabindex="-1">Quick Build with Make <a class="header-anchor" href="#quick-build-with-make" aria-hidden="true">#</a></h3>
+<p>The <code>Makefile</code> provides convenient targets for common workflows:</p>
+<pre><code class="language-bash"># Release build (includes v8 snapshot for faster startup)
+make build
+
+# Debug build
+make build-dev
+</code></pre>
+<p>The release build (<code>make build</code>) performs two steps automatically:</p>
+<ol>
+<li><strong>Generates a V8 snapshot</strong> in <code>ReleaseFast</code> mode</li>
+<li><strong>Compiles the browser</strong> in <code>ReleaseFast</code> mode using the embedded snapshot</li>
+</ol>
+<p>The resulting binary is placed at <code>./zig-out/bin/lightpanda</code>.</p>
+<h3 id="using-zig-directly" tabindex="-1">Using Zig Directly <a class="header-anchor" href="#using-zig-directly" aria-hidden="true">#</a></h3>
+<p>You can also invoke the Zig build system directly for more control:</p>
+<pre><code class="language-bash"># Default (debug) build
+zig build
+
+# Build and run immediately
+zig build run
+
+# Release build for maximum performance
+zig build -Doptimize=ReleaseFast
+</code></pre>
+<h3 id="build-options" tabindex="-1">Build Options <a class="header-anchor" href="#build-options" aria-hidden="true">#</a></h3>
+<p>The <code>build.zig</code> file exposes several configuration options:</p>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>optimize</code></td>
+<td>enum</td>
+<td>Optimization level: <code>Debug</code>, <code>ReleaseSafe</code>, <code>ReleaseFast</code>, <code>ReleaseSmall</code></td>
+</tr>
+<tr>
+<td><code>snapshot_path</code></td>
+<td>string</td>
+<td>Path to a prebuilt V8 snapshot binary</td>
+</tr>
+<tr>
+<td><code>prebuilt_v8_path</code></td>
+<td>string</td>
+<td>Path to a prebuilt <code>libc_v8.a</code> to skip V8 compilation</td>
+</tr>
+<tr>
+<td><code>git_commit</code></td>
+<td>string</td>
+<td>Git commit hash embedded in the binary (defaults to <code>&quot;dev&quot;</code>)</td>
+</tr>
+<tr>
+<td><code>tsan</code></td>
+<td>bool</td>
+<td>Enable Thread Sanitizer</td>
+</tr>
+<tr>
+<td><code>asan</code></td>
+<td>bool</td>
+<td>Enable Address Sanitizer</td>
+</tr>
+<tr>
+<td><code>csan</code></td>
+<td>enum</td>
+<td>Enable C Sanitizers</td>
+</tr>
+</tbody>
+</table>
+<p>Example with multiple options:</p>
+<pre><code class="language-bash">zig build -Doptimize=ReleaseFast -Dgit_commit=$(git rev-parse --short HEAD)
+</code></pre>
+<hr>
+<h2 id="v8-snapshots" tabindex="-1">V8 Snapshots <a class="header-anchor" href="#v8-snapshots" aria-hidden="true">#</a></h2>
+<p>Lightpanda uses V8 snapshots to dramatically reduce startup time. A snapshot serializes the initial JavaScript heap state so it does not need to be rebuilt on every launch.</p>
+<h3 id="how-snapshots-work" tabindex="-1">How Snapshots Work <a class="header-anchor" href="#how-snapshots-work" aria-hidden="true">#</a></h3>
+<p>By default, Lightpanda creates the V8 snapshot at runtime during startup. For production or benchmarking, you should pre-generate and embed the snapshot into the binary.</p>
+<h3 id="generating-a-snapshot" tabindex="-1">Generating a Snapshot <a class="header-anchor" href="#generating-a-snapshot" aria-hidden="true">#</a></h3>
+<pre><code class="language-bash">zig build snapshot_creator -- src/snapshot.bin
+</code></pre>
+<p>This produces a <code>snapshot.bin</code> file containing the serialized V8 heap.</p>
+<h3 id="building-with-an-embedded-snapshot" tabindex="-1">Building with an Embedded Snapshot <a class="header-anchor" href="#building-with-an-embedded-snapshot" aria-hidden="true">#</a></h3>
+<pre><code class="language-bash">zig build -Dsnapshot_path=../../snapshot.bin
+</code></pre>
+<p>The <code>Makefile</code> automates this two-step process. When you run <code>make build</code>, it first generates the snapshot in <code>ReleaseFast</code> mode and then compiles the browser with the snapshot embedded.</p>
+<hr>
+<h2 id="native-dependencies" tabindex="-1">Native Dependencies <a class="header-anchor" href="#native-dependencies" aria-hidden="true">#</a></h2>
+<p>Lightpanda links against several native libraries, all managed through the Zig build system via <code>build.zig.zon</code> dependency declarations. You do not need to install these manually; the build system fetches and compiles them automatically.</p>
+<h3 id="v8-(javascript-engine)" tabindex="-1">V8 (JavaScript Engine) <a class="header-anchor" href="#v8-(javascript-engine)" aria-hidden="true">#</a></h3>
+<p>The V8 engine is provided by <a href="https://github.com/lightpanda-io/zig-v8-fork">zig-v8-fork</a>, a Zig-compatible fork of the V8 bindings. V8 compilation is the most time-consuming part of the build and may take 10-30 minutes on first build. The compiled artifact is cached in <code>.lp-cache/</code> for subsequent builds.</p>
+<p>If you have a prebuilt <code>libc_v8.a</code>, you can skip V8 compilation entirely:</p>
+<pre><code class="language-bash">zig build -Dprebuilt_v8_path=/path/to/libc_v8.a
+</code></pre>
+<h3 id="html5ever-(html-parser)" tabindex="-1">html5ever (HTML Parser) <a class="header-anchor" href="#html5ever-(html-parser)" aria-hidden="true">#</a></h3>
+<p>The HTML parser uses Rust’s <a href="https://github.com/servo/html5ever">html5ever</a> via Cargo. The Zig build system invokes <code>cargo build</code> automatically to compile the <code>litefetch_html5ever</code> static library. This is why Rust is a required prerequisite.</p>
+<h3 id="libcurl-(http-client)" tabindex="-1">libcurl (HTTP Client) <a class="header-anchor" href="#libcurl-(http-client)" aria-hidden="true">#</a></h3>
+<p>Libcurl is built from source along with its dependencies:</p>
+<ul>
+<li><strong>zlib</strong> — compression</li>
+<li><strong>Brotli</strong> — Brotli compression support</li>
+<li><strong>nghttp2</strong> — HTTP/2 protocol support</li>
+<li><strong>BoringSSL</strong> — TLS (OpenSSL-compatible)</li>
+</ul>
+<p>On macOS, the build also links against <code>CoreFoundation</code> and <code>SystemConfiguration</code> frameworks for proxy support.</p>
+<h3 id="dependency-versions" tabindex="-1">Dependency Versions <a class="header-anchor" href="#dependency-versions" aria-hidden="true">#</a></h3>
+<p>Current dependency versions (from <code>build.zig.zon</code>):</p>
+<table>
+<thead>
+<tr>
+<th>Library</th>
+<th>Version</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>curl</td>
+<td>8.18.0</td>
+</tr>
+<tr>
+<td>zlib</td>
+<td>1.3.2</td>
+</tr>
+<tr>
+<td>Brotli</td>
+<td>1.2.0</td>
+</tr>
+<tr>
+<td>nghttp2</td>
+<td>1.68.0</td>
+</tr>
+<tr>
+<td>BoringSSL</td>
+<td>latest (git)</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="running-the-browser" tabindex="-1">Running the Browser <a class="header-anchor" href="#running-the-browser" aria-hidden="true">#</a></h2>
+<p>After building, you can run Lightpanda directly:</p>
+<pre><code class="language-bash"># Run from the build output
+./zig-out/bin/lightpanda serve --host 127.0.0.1 --port 9222
+
+# Or build and run in one step
+zig build run -- serve --host 127.0.0.1 --port 9222
+</code></pre>
+<p>For debug builds with additional logging:</p>
+<pre><code class="language-bash">make run-debug
+</code></pre>
+<hr>
+<h2 id="code-formatting" tabindex="-1">Code Formatting <a class="header-anchor" href="#code-formatting" aria-hidden="true">#</a></h2>
+<p>The Zig build system includes a formatting check step. By default, <code>zig build</code> verifies that all source files follow standard Zig formatting:</p>
+<pre><code class="language-bash"># Check formatting without building
+zig build fmt
+
+# Auto-format all source files
+zig fmt src/ build.zig build.zig.zon
+</code></pre>
+<p>Formatting is checked automatically during the build. If any files are not formatted correctly, the build will fail with a formatting error.</p>
+<hr>
+<h2 id="build-artifacts" tabindex="-1">Build Artifacts <a class="header-anchor" href="#build-artifacts" aria-hidden="true">#</a></h2>
+<p>After a successful build, the output is organized as follows:</p>
+<pre><code>browser/
+├── zig-out/
+│   └── bin/
+│       ├── lightpanda                    # Main browser binary
+│       └── lightpanda-snapshot-creator   # Snapshot generation tool
+├── .lp-cache/                            # Cached V8 build artifacts
+└── src/snapshot.bin                      # Generated V8 snapshot (if created)
+</code></pre>
+<p>The <code>zig-out/</code> directory is the standard Zig output directory. The <code>.lp-cache/</code> directory contains cached V8 compilation artifacts and can be safely deleted if you need a clean V8 rebuild.</p>
+<hr>
+<h2 id="troubleshooting" tabindex="-1">Troubleshooting <a class="header-anchor" href="#troubleshooting" aria-hidden="true">#</a></h2>
+<h3 id="v8-build-fails" tabindex="-1">V8 Build Fails <a class="header-anchor" href="#v8-build-fails" aria-hidden="true">#</a></h3>
+<p>V8 compilation requires significant memory (4GB+ recommended). If the build is killed by the OOM killer, try closing other applications or increasing available memory. The V8 build also requires <code>clang</code> on Linux — make sure it is installed.</p>
+<h3 id="html5ever-%2F-cargo-errors" tabindex="-1">html5ever / Cargo Errors <a class="header-anchor" href="#html5ever-%2F-cargo-errors" aria-hidden="true">#</a></h3>
+<p>Ensure Rust is installed and <code>cargo</code> is in your PATH. The html5ever build requires the Rust stable toolchain:</p>
+<pre><code class="language-bash">rustup default stable
+rustup update
+</code></pre>
+<h3 id="zig-version-mismatch" tabindex="-1">Zig Version Mismatch <a class="header-anchor" href="#zig-version-mismatch" aria-hidden="true">#</a></h3>
+<p>Lightpanda requires Zig <strong>0.15.2</strong> exactly. Check your version with:</p>
+<pre><code class="language-bash">zig version
+</code></pre>
+<p>If you have a different version, download the correct one from <a href="https://ziglang.org/download/">ziglang.org/download</a>. The Nix devShell automatically provides the correct version.</p>
+<h3 id="macos-linker-issues" tabindex="-1">macOS Linker Issues <a class="header-anchor" href="#macos-linker-issues" aria-hidden="true">#</a></h3>
+<p>If you encounter linker errors related to frameworks on macOS, ensure Xcode Command Line Tools are up to date:</p>
+<pre><code class="language-bash">sudo xcode-select --switch /Applications/Xcode.app
+</code></pre>
+<h3 id="clean-rebuild" tabindex="-1">Clean Rebuild <a class="header-anchor" href="#clean-rebuild" aria-hidden="true">#</a></h3>
+<p>To perform a completely clean rebuild:</p>
+<pre><code class="language-bash">rm -rf zig-out zig-cache .lp-cache
+zig build
+</code></pre>
+<hr>
+<h2 id="development-workflow" tabindex="-1">Development Workflow <a class="header-anchor" href="#development-workflow" aria-hidden="true">#</a></h2>
+<p>A typical development cycle looks like this:</p>
+<ol>
+<li>Make code changes in <code>src/</code></li>
+<li>Build in debug mode: <code>make build-dev</code> or <code>zig build</code></li>
+<li>Run unit tests: <code>make test</code></li>
+<li>Test manually: <code>zig build run -- serve --host 127.0.0.1 --port 9222</code></li>
+<li>Check formatting: <code>zig build fmt</code></li>
+</ol>
+<p>For performance testing, use a release build:</p>
+<pre><code class="language-bash">make build
+./zig-out/bin/lightpanda serve --host 127.0.0.1 --port 9222
+</code></pre>
+<hr>
+<h2 id="related-topics" tabindex="-1">Related Topics <a class="header-anchor" href="#related-topics" aria-hidden="true">#</a></h2>
+<ul>
+<li><a href="overview.html">Overview</a> — Introduction to Lightpanda Browser</li>
+<li><a href="testing.html">Testing</a> — Running unit tests, end-to-end tests, and Web Platform Tests</li>
+<li><a href="architecture.html">Architecture</a> — Understanding the codebase structure</li>
+<li><a href="contributing.html">Contributing</a> — How to submit pull requests</li>
+</ul>
+</main>
+    <nav data-ds="toc"><div class="toc-title">On this page</div><ul><li><a href="#system-requirements">System Requirements</a></li><li><a href="#platform-specific-dependencies">Platform-Specific Dependencies</a></li><ul><li><a href="#debian-%2F-ubuntu">Debian / Ubuntu</a></li><li><a href="#macos">macOS</a></li><li><a href="#nix">Nix</a></li></ul><li><a href="#cloning-the-repository">Cloning the Repository</a></li><li><a href="#build-commands">Build Commands</a></li><ul><li><a href="#quick-build-with-make">Quick Build with Make</a></li><li><a href="#using-zig-directly">Using Zig Directly</a></li><li><a href="#build-options">Build Options</a></li></ul><li><a href="#v8-snapshots">V8 Snapshots</a></li><ul><li><a href="#how-snapshots-work">How Snapshots Work</a></li><li><a href="#generating-a-snapshot">Generating a Snapshot</a></li><li><a href="#building-with-an-embedded-snapshot">Building with an Embedded Snapshot</a></li></ul><li><a href="#native-dependencies">Native Dependencies</a></li><ul><li><a href="#v8-(javascript-engine)">V8 (JavaScript Engine)</a></li><li><a href="#html5ever-(html-parser)">html5ever (HTML Parser)</a></li><li><a href="#libcurl-(http-client)">libcurl (HTTP Client)</a></li><li><a href="#dependency-versions">Dependency Versions</a></li></ul><li><a href="#running-the-browser">Running the Browser</a></li><li><a href="#code-formatting">Code Formatting</a></li><li><a href="#build-artifacts">Build Artifacts</a></li><li><a href="#troubleshooting">Troubleshooting</a></li><ul><li><a href="#v8-build-fails">V8 Build Fails</a></li><li><a href="#html5ever-%2F-cargo-errors">html5ever / Cargo Errors</a></li><li><a href="#zig-version-mismatch">Zig Version Mismatch</a></li><li><a href="#macos-linker-issues">macOS Linker Issues</a></li><li><a href="#clean-rebuild">Clean Rebuild</a></li></ul><li><a href="#development-workflow">Development Workflow</a></li><li><a href="#related-topics">Related Topics</a></li></ul></nav>
+  </div>
+  <footer data-ds="footer">
+    <a href="https://docsmith.aigne.io/" target="_blank" rel="noopener noreferrer" class="docsmith-badge">
+      <svg class="docsmith-badge-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+        <polyline points="14 2 14 8 20 8"></polyline>
+        <line x1="16" y1="13" x2="8" y2="13"></line>
+        <line x1="16" y1="17" x2="8" y2="17"></line>
+        <polyline points="10 9 9 9 8 9"></polyline>
+      </svg>
+      <span>Built with <strong>AIGNE DocSmith</strong></span>
+    </a>
+  </footer>
+
+</body>
+</html>

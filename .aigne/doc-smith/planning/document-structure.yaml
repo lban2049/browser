@@ -1,0 +1,56 @@
+project:
+  title: "Lightpanda Browser"
+  description: "Open-source headless browser built for performance — fast web automation for AI agents, scraping, and testing"
+documents:
+  - title: "Overview"
+    description: "Introduction to Lightpanda Browser, its key features, performance advantages, and current status"
+    path: "/overview"
+    sourcePaths: ["README.md"]
+    icon: "lucide:info"
+  - title: "Quick Start"
+    description: "Installation, basic usage, and getting up and running with Lightpanda"
+    path: "/quick-start"
+    sourcePaths: ["README.md", "Dockerfile"]
+    icon: "lucide:rocket"
+    children:
+      - title: "Installation"
+        description: "Download and install Lightpanda from nightly builds or Docker"
+        path: "/quick-start/installation"
+        sourcePaths: ["README.md", "Dockerfile"]
+      - title: "CDP Server"
+        description: "Start the CDP server and connect with Puppeteer or Playwright"
+        path: "/quick-start/cdp-server"
+        sourcePaths: ["README.md", "src/cdp/cdp.zig", "src/Server.zig"]
+  - title: "Architecture"
+    description: "Technical architecture, key components, and design decisions behind Lightpanda"
+    path: "/architecture"
+    sourcePaths: ["src/main.zig", "src/App.zig", "src/browser/Browser.zig", "src/browser/Page.zig", "src/Server.zig"]
+    icon: "lucide:layers"
+    children:
+      - title: "Browser Engine"
+        description: "Core browser engine components — DOM, JavaScript, HTML parsing, and page lifecycle"
+        path: "/architecture/browser-engine"
+        sourcePaths: ["src/browser/Browser.zig", "src/browser/Page.zig", "src/browser/ScriptManager.zig", "src/browser/parser", "src/browser/js"]
+      - title: "Network Layer"
+        description: "HTTP client, WebSocket support, robots.txt handling, and proxy configuration"
+        path: "/architecture/network"
+        sourcePaths: ["src/network/http.zig", "src/network/websocket.zig", "src/network/Robots.zig", "src/browser/HttpClient.zig"]
+      - title: "CDP Protocol"
+        description: "Chrome DevTools Protocol implementation for browser automation"
+        path: "/architecture/cdp"
+        sourcePaths: ["src/cdp/cdp.zig", "src/cdp/domains", "src/cdp/Node.zig"]
+  - title: "Building from Source"
+    description: "Prerequisites, build instructions, and development setup"
+    path: "/building"
+    sourcePaths: ["README.md", "build.zig", "build.zig.zon", "Makefile", "flake.nix"]
+    icon: "lucide:hammer"
+  - title: "Testing"
+    description: "Unit tests, end-to-end tests, and Web Platform Tests"
+    path: "/testing"
+    sourcePaths: ["README.md", "Makefile", "src/test_runner.zig", "src/testing.zig"]
+    icon: "lucide:check-circle"
+  - title: "Contributing"
+    description: "How to contribute to Lightpanda Browser — CLA, pull requests, and guidelines"
+    path: "/contributing"
+    sourcePaths: ["CONTRIBUTING.md", "CLA.md", "LICENSING.md"]
+    icon: "lucide:git-pull-request"

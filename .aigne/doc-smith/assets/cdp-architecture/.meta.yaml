@@ -1,0 +1,9 @@
+kind: image
+generation:
+  prompt: "CDP architecture showing the WebSocket server receiving client messages, the CDP core dispatching to domain handlers, and the browser engine executing commands"
+  model: google/gemini-3-pro-image-preview
+  createdAt: "2026-03-14T10:00:00Z"
+documents:
+  - path: /architecture/cdp
+languages:
+  - en

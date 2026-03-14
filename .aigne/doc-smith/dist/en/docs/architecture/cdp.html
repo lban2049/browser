@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CDP Protocol - lightpanda-browser</title>
+  <meta name="description" content="">
+  <meta property="og:title" content="CDP Protocol">
+  <meta property="og:description" content="">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="../../../assets/docsmith.css">
+  <link rel="stylesheet" href="../../../assets/theme.css">
+  <script src="../../../assets/nav.js" defer></script>
+  <script>
+    // Initialize theme from localStorage or system preference
+    (function() {
+      const stored = localStorage.getItem('docsmith-theme');
+      if (stored) {
+        document.documentElement.setAttribute('data-theme', stored);
+      } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    })();
+
+    function toggleTheme() {
+      const html = document.documentElement;
+      const current = html.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      localStorage.setItem('docsmith-theme', next);
+    }
+  </script>
+</head>
+<body data-ds-path="/architecture/cdp">
+  <header data-ds="header">
+    <a href="/en/index.html" class="site-title">lightpanda-browser</a>
+    <div class="header-controls">
+      
+    <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
+      <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="5"></circle>
+        <line x1="12" y1="1" x2="12" y2="3"></line>
+        <line x1="12" y1="21" x2="12" y2="23"></line>
+        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+        <line x1="1" y1="12" x2="3" y2="12"></line>
+        <line x1="21" y1="12" x2="23" y2="12"></line>
+        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+      </svg>
+      <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+      </svg>
+    </button>
+    </div>
+  </header>
+  <div data-ds="layout">
+    <aside data-ds="sidebar"><!-- nav.js 渲染 --></aside>
+    <main data-ds="content"><h1 id="cdp-protocol" tabindex="-1">CDP Protocol <a class="header-anchor" href="#cdp-protocol" aria-hidden="true">#</a></h1>
+<p>Lightpanda implements the <a href="https://chromedevtools.github.io/devtools-protocol/">Chrome DevTools Protocol (CDP)</a> to enable browser automation through standard tooling. This means you can use Puppeteer, Playwright, chromedp, or any other CDP-compatible client to control Lightpanda just like you would control Chrome or Chromium.</p>
+<blockquote>
+<p><strong>Parent topic:</strong> <a href="../architecture.html">Architecture</a></p>
+</blockquote>
+<h2 id="how-cdp-works-in-lightpanda" tabindex="-1">How CDP Works in Lightpanda <a class="header-anchor" href="#how-cdp-works-in-lightpanda" aria-hidden="true">#</a></h2>
+<p>When you start Lightpanda in CDP server mode, it opens a WebSocket server that listens for incoming CDP connections. Each connected client sends JSON-encoded CDP commands over the WebSocket, and Lightpanda processes them and returns results in the same format that Chrome would.</p>
+<p>The core flow looks like this:</p>
+<ol>
+<li>The client connects to the WebSocket endpoint (e.g., <code>ws://127.0.0.1:9222</code>)</li>
+<li>The client sends a JSON message specifying a CDP method and parameters</li>
+<li>Lightpanda parses the message, dispatches it to the correct domain handler, and sends back a JSON response</li>
+<li>Asynchronous events (page loads, network activity, console messages) are pushed to the client as CDP events</li>
+</ol>
+<pre><code class="language-json">{
+  &quot;id&quot;: 1,
+  &quot;method&quot;: &quot;Page.navigate&quot;,
+  &quot;params&quot;: {
+    &quot;url&quot;: &quot;https://example.com&quot;
+  }
+}
+</code></pre>
+<h2 id="architecture-overview" tabindex="-1">Architecture Overview <a class="header-anchor" href="#architecture-overview" aria-hidden="true">#</a></h2>
+<p>The CDP implementation is organized into three layers:</p>
+<ul>
+<li><strong>Server layer</strong> (<code>src/Server.zig</code>) – Manages WebSocket connections, thread spawning, and raw message I/O.</li>
+<li><strong>CDP core</strong> (<code>src/cdp/cdp.zig</code>) – Parses incoming JSON messages, routes them to the correct domain, and manages browser contexts and sessions.</li>
+<li><strong>Domain handlers</strong> (<code>src/cdp/domains/</code>) – Individual modules that implement specific CDP domains like <code>Page</code>, <code>DOM</code>, <code>Network</code>, and <code>Runtime</code>.</li>
+</ul>
+<h3 id="message-dispatch" tabindex="-1">Message Dispatch <a class="header-anchor" href="#message-dispatch" aria-hidden="true">#</a></h3>
+<p>When a CDP message arrives, the core parser extracts the domain name from the method string (e.g., <code>Page</code> from <code>Page.navigate</code>). It then uses a compile-time optimized dispatch table that matches domain name lengths and byte values to route the message to the correct handler module. This approach avoids runtime string comparisons entirely.</p>
+<pre><code>&quot;Target.createTarget&quot;
+   |         |
+   domain    action
+   (Target)  (createTarget)
+</code></pre>
+<p>Each domain handler receives a <code>Command</code> struct containing the parsed input, the current browser context, and an arena allocator for temporary allocations. The handler processes the command and sends a result or error back through the same WebSocket connection.</p>
+<h3 id="browser-context-and-sessions" tabindex="-1">Browser Context and Sessions <a class="header-anchor" href="#browser-context-and-sessions" aria-hidden="true">#</a></h3>
+<p>CDP uses a layered model to manage browser state:</p>
+<ul>
+<li><strong>BrowserContext</strong> – An isolated browsing environment (similar to an incognito profile). Lightpanda currently supports one browser context at a time.</li>
+<li><strong>Target</strong> – Represents a page within a browser context. Each target has a unique ID.</li>
+<li><strong>Session</strong> – A link between the CDP client and a target. The client attaches to a target and receives a <code>sessionId</code> used for all subsequent communication with that target.</li>
+</ul>
+<p>The typical session lifecycle:</p>
+<ol>
+<li>Client calls <code>Target.createBrowserContext</code> to create an isolated context</li>
+<li>Client calls <code>Target.createTarget</code> with a URL to open a page</li>
+<li>Lightpanda auto-attaches (or the client explicitly attaches) and returns a <code>sessionId</code></li>
+<li>All subsequent commands include this <code>sessionId</code></li>
+<li>Client calls <code>Target.closeTarget</code> and <code>Target.disposeBrowserContext</code> when done</li>
+</ol>
+<pre><code class="language-javascript">// Puppeteer example
+const browser = await puppeteer.connect({
+  browserWSEndpoint: 'ws://127.0.0.1:9222'
+});
+const page = await browser.newPage();
+await page.goto('https://example.com');
+</code></pre>
+<h3 id="startup-behavior" tabindex="-1">Startup Behavior <a class="header-anchor" href="#startup-behavior" aria-hidden="true">#</a></h3>
+<p>Lightpanda handles an initial “startup” phase for compatibility with automation clients like Puppeteer. Before a real browser context is created, the server responds to a limited set of CDP commands using a dummy session ID (<code>STARTUP</code>). This allows clients that expect pre-existing targets on connection to function correctly.</p>
+<h2 id="supported-cdp-domains" tabindex="-1">Supported CDP Domains <a class="header-anchor" href="#supported-cdp-domains" aria-hidden="true">#</a></h2>
+<p>Lightpanda implements the following CDP domains. Each domain handles a specific category of browser functionality.</p>
+<h3 id="target" tabindex="-1">Target <a class="header-anchor" href="#target" aria-hidden="true">#</a></h3>
+<p>Manages browser contexts, targets (pages), and sessions. This is the entry point for creating and controlling pages.</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>createBrowserContext</code></td>
+<td>Create an isolated browsing context</td>
+</tr>
+<tr>
+<td><code>createTarget</code></td>
+<td>Open a new page at a given URL</td>
+</tr>
+<tr>
+<td><code>attachToTarget</code></td>
+<td>Attach to a target and receive a session ID</td>
+</tr>
+<tr>
+<td><code>closeTarget</code></td>
+<td>Close a page</td>
+</tr>
+<tr>
+<td><code>disposeBrowserContext</code></td>
+<td>Destroy a browser context</td>
+</tr>
+<tr>
+<td><code>getTargets</code></td>
+<td>List all active targets</td>
+</tr>
+<tr>
+<td><code>setAutoAttach</code></td>
+<td>Automatically attach to new targets</td>
+</tr>
+<tr>
+<td><code>setDiscoverTargets</code></td>
+<td>Enable target discovery events</td>
+</tr>
+<tr>
+<td><code>sendMessageToTarget</code></td>
+<td>Route a message to a specific target</td>
+</tr>
+</tbody>
+</table>
+<h3 id="page" tabindex="-1">Page <a class="header-anchor" href="#page" aria-hidden="true">#</a></h3>
+<p>Controls page navigation, lifecycle events, and page-level operations.</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>navigate</code></td>
+<td>Navigate to a URL</td>
+</tr>
+<tr>
+<td><code>enable</code></td>
+<td>Enable page domain events</td>
+</tr>
+<tr>
+<td><code>getFrameTree</code></td>
+<td>Get the frame tree structure</td>
+</tr>
+<tr>
+<td><code>setLifecycleEventsEnabled</code></td>
+<td>Enable/disable lifecycle events</td>
+</tr>
+<tr>
+<td><code>addScriptToEvaluateOnNewDocument</code></td>
+<td>Inject script before page load</td>
+</tr>
+<tr>
+<td><code>createIsolatedWorld</code></td>
+<td>Create an isolated JavaScript world</td>
+</tr>
+<tr>
+<td><code>captureScreenshot</code></td>
+<td>Capture a page screenshot</td>
+</tr>
+<tr>
+<td><code>getLayoutMetrics</code></td>
+<td>Get page layout dimensions</td>
+</tr>
+<tr>
+<td><code>close</code></td>
+<td>Close the current page</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dom" tabindex="-1">DOM <a class="header-anchor" href="#dom" aria-hidden="true">#</a></h3>
+<p>Provides access to the document object model for querying and inspecting elements.</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>getDocument</code></td>
+<td>Get the root DOM node</td>
+</tr>
+<tr>
+<td><code>querySelector</code></td>
+<td>Find an element by CSS selector</td>
+</tr>
+<tr>
+<td><code>querySelectorAll</code></td>
+<td>Find all elements matching a selector</td>
+</tr>
+<tr>
+<td><code>performSearch</code></td>
+<td>Search the DOM by selector</td>
+</tr>
+<tr>
+<td><code>getSearchResults</code></td>
+<td>Retrieve search results by index range</td>
+</tr>
+<tr>
+<td><code>describeNode</code></td>
+<td>Get detailed node information</td>
+</tr>
+<tr>
+<td><code>getOuterHTML</code></td>
+<td>Get a node’s outer HTML</td>
+</tr>
+<tr>
+<td><code>getBoxModel</code></td>
+<td>Get a node’s box model dimensions</td>
+</tr>
+<tr>
+<td><code>resolveNode</code></td>
+<td>Resolve a node to a JavaScript object</td>
+</tr>
+<tr>
+<td><code>requestChildNodes</code></td>
+<td>Request child nodes for a given node</td>
+</tr>
+</tbody>
+</table>
+<h3 id="runtime" tabindex="-1">Runtime <a class="header-anchor" href="#runtime" aria-hidden="true">#</a></h3>
+<p>Executes JavaScript in the page context. Most Runtime methods are forwarded to the V8 inspector.</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>evaluate</code></td>
+<td>Evaluate a JavaScript expression</td>
+</tr>
+<tr>
+<td><code>callFunctionOn</code></td>
+<td>Call a function on a remote object</td>
+</tr>
+<tr>
+<td><code>addBinding</code></td>
+<td>Expose a function to the page context</td>
+</tr>
+<tr>
+<td><code>getProperties</code></td>
+<td>Get properties of a remote object</td>
+</tr>
+<tr>
+<td><code>releaseObject</code></td>
+<td>Release a remote object reference</td>
+</tr>
+</tbody>
+</table>
+<h3 id="network" tabindex="-1">Network <a class="header-anchor" href="#network" aria-hidden="true">#</a></h3>
+<p>Monitors and controls network activity, cookies, and HTTP headers.</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>enable</code> / <code>disable</code></td>
+<td>Enable or disable network event capture</td>
+</tr>
+<tr>
+<td><code>setExtraHTTPHeaders</code></td>
+<td>Add custom headers to all requests</td>
+</tr>
+<tr>
+<td><code>setCookie</code> / <code>setCookies</code></td>
+<td>Set one or more cookies</td>
+</tr>
+<tr>
+<td><code>getCookies</code></td>
+<td>Retrieve current cookies</td>
+</tr>
+<tr>
+<td><code>deleteCookies</code></td>
+<td>Delete cookies matching criteria</td>
+</tr>
+<tr>
+<td><code>getResponseBody</code></td>
+<td>Get the body of a captured response</td>
+</tr>
+</tbody>
+</table>
+<h3 id="fetch" tabindex="-1">Fetch <a class="header-anchor" href="#fetch" aria-hidden="true">#</a></h3>
+<p>Intercepts network requests, allowing you to modify, fulfill, or fail them before they reach the server.</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>enable</code> / <code>disable</code></td>
+<td>Enable or disable request interception</td>
+</tr>
+<tr>
+<td><code>continueRequest</code></td>
+<td>Continue an intercepted request</td>
+</tr>
+<tr>
+<td><code>failRequest</code></td>
+<td>Fail an intercepted request</td>
+</tr>
+<tr>
+<td><code>fulfillRequest</code></td>
+<td>Fulfill an intercepted request with a custom response</td>
+</tr>
+<tr>
+<td><code>continueWithAuth</code></td>
+<td>Continue with authentication credentials</td>
+</tr>
+</tbody>
+</table>
+<h3 id="input" tabindex="-1">Input <a class="header-anchor" href="#input" aria-hidden="true">#</a></h3>
+<p>Simulates user input events such as keyboard and mouse interactions.</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>dispatchKeyEvent</code></td>
+<td>Simulate a keyboard event</td>
+</tr>
+<tr>
+<td><code>dispatchMouseEvent</code></td>
+<td>Simulate a mouse event</td>
+</tr>
+<tr>
+<td><code>insertText</code></td>
+<td>Insert text at the current cursor position</td>
+</tr>
+</tbody>
+</table>
+<h3 id="emulation" tabindex="-1">Emulation <a class="header-anchor" href="#emulation" aria-hidden="true">#</a></h3>
+<p>Controls device emulation settings. These methods are currently accepted but not fully implemented (noop).</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>setDeviceMetricsOverride</code></td>
+<td>Override device screen dimensions</td>
+</tr>
+<tr>
+<td><code>setTouchEmulationEnabled</code></td>
+<td>Enable or disable touch events</td>
+</tr>
+<tr>
+<td><code>setEmulatedMedia</code></td>
+<td>Override media type and features</td>
+</tr>
+</tbody>
+</table>
+<h3 id="other-domains" tabindex="-1">Other Domains <a class="header-anchor" href="#other-domains" aria-hidden="true">#</a></h3>
+<p>The following domains are also implemented with basic support:</p>
+<ul>
+<li><strong>Browser</strong> – Browser-level information and version details</li>
+<li><strong>CSS</strong> – Computed styles and stylesheet information</li>
+<li><strong>Accessibility</strong> – Accessibility tree inspection</li>
+<li><strong>Security</strong> – Security origin information</li>
+<li><strong>Performance</strong> – Performance metrics</li>
+<li><strong>Storage</strong> – Cookie and storage management</li>
+<li><strong>Inspector</strong> – Inspector session management</li>
+<li><strong>Log</strong> – Console log capture</li>
+</ul>
+<h2 id="node-registry" tabindex="-1">Node Registry <a class="header-anchor" href="#node-registry" aria-hidden="true">#</a></h2>
+<p>The CDP implementation maintains a <code>Node.Registry</code> that maps between CDP node IDs (integers) and actual DOM nodes. Whenever a DOM node is sent to the client (e.g., through <code>DOM.getDocument</code>), it is registered with a unique numeric ID. This allows the client to reference specific nodes in subsequent commands like <code>DOM.querySelector</code> or <code>DOM.describeNode</code>.</p>
+<pre><code>Client                    Node Registry              DOM Tree
+  |                           |                        |
+  |-- getDocument -----------&gt;|                        |
+  |                           |-- register(document) -&gt;|
+  |                           |&lt;- id: 1 --------------|
+  |&lt;- { nodeId: 1, ... } ----|                        |
+  |                           |                        |
+  |-- querySelector(1, &quot;h1&quot;)-&gt;|                        |
+  |                           |-- lookup(1) ---------&gt;|
+  |                           |-- querySelector ------&gt;|
+  |                           |&lt;- register(h1) -------|
+  |&lt;- { nodeId: 2, ... } ----|                        |
+</code></pre>
+<p>The registry supports bidirectional lookup (ID to node and node to ID) and uses a memory pool for efficient allocation. It is reset between page navigations.</p>
+<h2 id="dom-search" tabindex="-1">DOM Search <a class="header-anchor" href="#dom-search" aria-hidden="true">#</a></h2>
+<p>Lightpanda implements the three-step CDP DOM search flow:</p>
+<ol>
+<li><strong><code>DOM.performSearch(query)</code></strong> – Execute a CSS selector query and store the matching node IDs</li>
+<li><strong><code>DOM.getSearchResults(searchId, fromIndex, toIndex)</code></strong> – Retrieve a slice of the search results</li>
+<li><strong><code>DOM.discardSearchResults(searchId)</code></strong> – Release the search resources</li>
+</ol>
+<p>Multiple concurrent searches are supported within a single browser context.</p>
+<h2 id="client-integration-examples" tabindex="-1">Client Integration Examples <a class="header-anchor" href="#client-integration-examples" aria-hidden="true">#</a></h2>
+<h3 id="puppeteer" tabindex="-1">Puppeteer <a class="header-anchor" href="#puppeteer" aria-hidden="true">#</a></h3>
+<pre><code class="language-javascript">const puppeteer = require('puppeteer');
+
+const browser = await puppeteer.connect({
+  browserWSEndpoint: 'ws://127.0.0.1:9222'
+});
+
+const page = await browser.newPage();
+await page.goto('https://example.com');
+
+const title = await page.title();
+console.log(title);
+
+await browser.close();
+</code></pre>
+<h3 id="playwright" tabindex="-1">Playwright <a class="header-anchor" href="#playwright" aria-hidden="true">#</a></h3>
+<pre><code class="language-javascript">const { chromium } = require('playwright');
+
+const browser = await chromium.connectOverCDP('ws://127.0.0.1:9222');
+const context = browser.contexts()[0];
+const page = await context.newPage();
+
+await page.goto('https://example.com');
+const content = await page.textContent('h1');
+
+await browser.close();
+</code></pre>
+<h3 id="chromedp-(go)" tabindex="-1">chromedp (Go) <a class="header-anchor" href="#chromedp-(go)" aria-hidden="true">#</a></h3>
+<pre><code class="language-go">ctx, cancel := chromedp.NewRemoteAllocator(
+    context.Background(),
+    &quot;ws://127.0.0.1:9222&quot;,
+)
+defer cancel()
+
+ctx, cancel = chromedp.NewContext(ctx)
+defer cancel()
+
+var title string
+chromedp.Run(ctx,
+    chromedp.Navigate(&quot;https://example.com&quot;),
+    chromedp.Title(&amp;title),
+)
+fmt.Println(title)
+</code></pre>
+<h2 id="memory-management" tabindex="-1">Memory Management <a class="header-anchor" href="#memory-management" aria-hidden="true">#</a></h2>
+<p>The CDP layer uses multiple arena allocators to manage memory efficiently:</p>
+<ul>
+<li><strong>Message arena</strong> – Temporary allocations for processing a single CDP message. Reset after each message.</li>
+<li><strong>Page arena</strong> – Allocations tied to the lifetime of one page navigation. Reset when the page changes.</li>
+<li><strong>Browser context arena</strong> – Allocations that persist for the entire browser context lifetime.</li>
+<li><strong>Notification arena</strong> – Used for processing asynchronous notifications outside the normal request-response cycle.</li>
+</ul>
+<p>This tiered approach ensures that short-lived allocations (like parsing a single command) are cleaned up immediately, while longer-lived state (like the node registry) persists as needed.</p>
+<h2 id="current-limitations" tabindex="-1">Current Limitations <a class="header-anchor" href="#current-limitations" aria-hidden="true">#</a></h2>
+<ul>
+<li>Only one browser context is supported at a time</li>
+<li>Some Emulation methods are accepted but not yet implemented (noop)</li>
+<li>Screenshot capture returns a placeholder image</li>
+<li>The <code>Page.addScriptToEvaluateOnNewDocument</code> method stores scripts but execution timing may differ from Chrome</li>
+</ul>
+<h2 id="related-topics" tabindex="-1">Related Topics <a class="header-anchor" href="#related-topics" aria-hidden="true">#</a></h2>
+<ul>
+<li><a href="../architecture.html">Architecture</a> – Overall system design and component overview</li>
+<li><a href="../architecture/browser-engine.html">Browser Engine</a> – DOM, JavaScript, and page lifecycle internals</li>
+<li><a href="../architecture/network.html">Network Layer</a> – HTTP client and WebSocket implementation details</li>
+<li><a href="../quick-start/cdp-server.html">CDP Server Quick Start</a> – How to start the server and connect a client</li>
+</ul>
+</main>
+    <nav data-ds="toc"><div class="toc-title">On this page</div><ul><li><a href="#how-cdp-works-in-lightpanda">How CDP Works in Lightpanda</a></li><li><a href="#architecture-overview">Architecture Overview</a></li><ul><li><a href="#message-dispatch">Message Dispatch</a></li><li><a href="#browser-context-and-sessions">Browser Context and Sessions</a></li><li><a href="#startup-behavior">Startup Behavior</a></li></ul><li><a href="#supported-cdp-domains">Supported CDP Domains</a></li><ul><li><a href="#target">Target</a></li><li><a href="#page">Page</a></li><li><a href="#dom">DOM</a></li><li><a href="#runtime">Runtime</a></li><li><a href="#network">Network</a></li><li><a href="#fetch">Fetch</a></li><li><a href="#input">Input</a></li><li><a href="#emulation">Emulation</a></li><li><a href="#other-domains">Other Domains</a></li></ul><li><a href="#node-registry">Node Registry</a></li><li><a href="#dom-search">DOM Search</a></li><li><a href="#client-integration-examples">Client Integration Examples</a></li><ul><li><a href="#puppeteer">Puppeteer</a></li><li><a href="#playwright">Playwright</a></li><li><a href="#chromedp-(go)">chromedp (Go)</a></li></ul><li><a href="#memory-management">Memory Management</a></li><li><a href="#current-limitations">Current Limitations</a></li><li><a href="#related-topics">Related Topics</a></li></ul></nav>
+  </div>
+  <footer data-ds="footer">
+    <a href="https://docsmith.aigne.io/" target="_blank" rel="noopener noreferrer" class="docsmith-badge">
+      <svg class="docsmith-badge-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+        <polyline points="14 2 14 8 20 8"></polyline>
+        <line x1="16" y1="13" x2="8" y2="13"></line>
+        <line x1="16" y1="17" x2="8" y2="17"></line>
+        <polyline points="10 9 9 9 8 9"></polyline>
+      </svg>
+      <span>Built with <strong>AIGNE DocSmith</strong></span>
+    </a>
+  </footer>
+
+</body>
+</html>

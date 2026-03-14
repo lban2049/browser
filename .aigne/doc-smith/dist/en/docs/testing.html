@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Testing - lightpanda-browser</title>
+  <meta name="description" content="">
+  <meta property="og:title" content="Testing">
+  <meta property="og:description" content="">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="../../assets/docsmith.css">
+  <link rel="stylesheet" href="../../assets/theme.css">
+  <script src="../../assets/nav.js" defer></script>
+  <script>
+    // Initialize theme from localStorage or system preference
+    (function() {
+      const stored = localStorage.getItem('docsmith-theme');
+      if (stored) {
+        document.documentElement.setAttribute('data-theme', stored);
+      } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    })();
+
+    function toggleTheme() {
+      const html = document.documentElement;
+      const current = html.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      localStorage.setItem('docsmith-theme', next);
+    }
+  </script>
+</head>
+<body data-ds-path="/testing">
+  <header data-ds="header">
+    <a href="/en/index.html" class="site-title">lightpanda-browser</a>
+    <div class="header-controls">
+      
+    <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
+      <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="5"></circle>
+        <line x1="12" y1="1" x2="12" y2="3"></line>
+        <line x1="12" y1="21" x2="12" y2="23"></line>
+        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+        <line x1="1" y1="12" x2="3" y2="12"></line>
+        <line x1="21" y1="12" x2="23" y2="12"></line>
+        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+      </svg>
+      <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+      </svg>
+    </button>
+    </div>
+  </header>
+  <div data-ds="layout">
+    <aside data-ds="sidebar"><!-- nav.js 渲染 --></aside>
+    <main data-ds="content"><h1 id="testing" tabindex="-1">Testing <a class="header-anchor" href="#testing" aria-hidden="true">#</a></h1>
+<p>Lightpanda uses a multi-layered testing strategy to ensure correctness across its browser engine, CDP protocol implementation, and Web API surface. This page covers the three main testing approaches: unit tests, end-to-end tests, and Web Platform Tests (WPT).</p>
+<p><strong>Prerequisites:</strong> You should have Lightpanda <a href="building.html">built from source</a> before running any tests.</p>
+<hr>
+<h2 id="unit-tests" tabindex="-1">Unit Tests <a class="header-anchor" href="#unit-tests" aria-hidden="true">#</a></h2>
+<p>Unit tests are the primary way to verify individual components of the browser engine. Lightpanda uses Zig’s built-in test framework with a custom test runner that provides enhanced reporting, memory leak detection, and performance tracking.</p>
+<h3 id="running-unit-tests" tabindex="-1">Running Unit Tests <a class="header-anchor" href="#running-unit-tests" aria-hidden="true">#</a></h3>
+<p>The simplest way to run all unit tests:</p>
+<pre><code class="language-bash">make test
+</code></pre>
+<p>Under the hood, this executes <code>zig build test</code> with Zig’s reference trace enabled. The custom test runner (<code>src/test_runner.zig</code>) replaces the default Zig test runner to provide:</p>
+<ul>
+<li>Color-coded pass/fail/skip output</li>
+<li>Memory leak detection per test</li>
+<li>Slowest test tracking (top 5)</li>
+<li>Optional metrics output in JSON format</li>
+</ul>
+<h3 id="filtering-tests" tabindex="-1">Filtering Tests <a class="header-anchor" href="#filtering-tests" aria-hidden="true">#</a></h3>
+<p>You can run a subset of tests using the <code>F</code> variable or the <code>TEST_FILTER</code> environment variable:</p>
+<pre><code class="language-bash"># Run only tests matching &quot;server&quot;
+make test F=&quot;server&quot;
+
+# Run tests with a subfilter (filter#subfilter format)
+TEST_FILTER=&quot;WebApi: #querySelector&quot; zig build test
+</code></pre>
+<p>The filter matches against test names using substring search. The subfilter (after <code>#</code>) provides a second level of filtering, primarily used for WebApi HTML-based tests.</p>
+<h3 id="environment-variables" tabindex="-1">Environment Variables <a class="header-anchor" href="#environment-variables" aria-hidden="true">#</a></h3>
+<p>The test runner responds to several environment variables:</p>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TEST_FILTER</code></td>
+<td>(none)</td>
+<td>Filter tests by name. Use <code>#</code> to separate filter and subfilter</td>
+</tr>
+<tr>
+<td><code>TEST_VERBOSE</code></td>
+<td><code>true</code></td>
+<td>Show individual test names and durations</td>
+</tr>
+<tr>
+<td><code>TEST_FAIL_FIRST</code></td>
+<td><code>false</code></td>
+<td>Stop on the first test failure</td>
+</tr>
+<tr>
+<td><code>METRICS</code></td>
+<td><code>false</code></td>
+<td>Output allocation and timing metrics as JSON</td>
+</tr>
+</tbody>
+</table>
+<h3 id="test-infrastructure" tabindex="-1">Test Infrastructure <a class="header-anchor" href="#test-infrastructure" aria-hidden="true">#</a></h3>
+<p>The test framework in <code>src/testing.zig</code> provides several utilities beyond the standard library:</p>
+<ul>
+<li><strong><code>expectEqual</code></strong> – A unified assertion that handles strings, structs, optionals, and tagged unions</li>
+<li><strong><code>expectDelta</code></strong> – Numeric comparison within a tolerance</li>
+<li><strong><code>expectJson</code></strong> – Deep JSON value comparison with detailed diff output</li>
+<li><strong><code>htmlRunner</code></strong> – Runs HTML-based Web API test files against a local test server</li>
+<li><strong><code>LogFilter</code></strong> – Temporarily suppresses specific log categories during tests that trigger expected errors</li>
+</ul>
+<h3 id="test-lifecycle" tabindex="-1">Test Lifecycle <a class="header-anchor" href="#test-lifecycle" aria-hidden="true">#</a></h3>
+<p>Each test run follows a setup/teardown lifecycle:</p>
+<ol>
+<li><strong><code>beforeAll</code></strong> – Initializes the application, HTTP client, browser instance, session, a local CDP server (port 9583), and a local HTTP test server (port 9582)</li>
+<li><strong>Individual tests</strong> – Each test gets its own allocator instance for leak detection</li>
+<li><strong><code>afterAll</code></strong> – Tears down servers, collects V8 heap statistics, and releases all resources</li>
+</ol>
+<p>This lifecycle ensures that tests have a fully functional browser environment including JavaScript execution and network capabilities.</p>
+<h3 id="memory-leak-detection" tabindex="-1">Memory Leak Detection <a class="header-anchor" href="#memory-leak-detection" aria-hidden="true">#</a></h3>
+<p>Every test is checked for memory leaks using Zig’s <code>std.testing.allocator</code>. The test runner also wraps allocations in a <code>TrackingAllocator</code> that records:</p>
+<ul>
+<li>Total allocation count</li>
+<li>Total reallocation count</li>
+<li>Total allocated bytes</li>
+</ul>
+<p>When the <code>METRICS</code> environment variable is set to <code>true</code>, these statistics are output as JSON at the end of the test run, along with V8 peak memory usage.</p>
+<pre><code class="language-json">[
+  {
+    &quot;name&quot;: &quot;browser&quot;,
+    &quot;bench&quot;: {
+      &quot;duration&quot;: 1234567890,
+      &quot;alloc_nb&quot;: 500,
+      &quot;realloc_nb&quot;: 50,
+      &quot;alloc_size&quot;: 1048576
+    }
+  },
+  {
+    &quot;name&quot;: &quot;v8&quot;,
+    &quot;bench&quot;: {
+      &quot;duration&quot;: 1234567890,
+      &quot;alloc_nb&quot;: 0,
+      &quot;realloc_nb&quot;: 0,
+      &quot;alloc_size&quot;: 8388608
+    }
+  }
+]
+</code></pre>
+<h3 id="writing-unit-tests" tabindex="-1">Writing Unit Tests <a class="header-anchor" href="#writing-unit-tests" aria-hidden="true">#</a></h3>
+<p>Zig tests are declared inline within source files using the <code>test</code> keyword. Lightpanda tests typically use the shared testing utilities:</p>
+<pre><code class="language-zig">const testing = @import(&quot;testing.zig&quot;);
+
+test &quot;parse valid URL&quot; {
+    const url = try Url.parse(testing.allocator, &quot;https://example.com/path&quot;);
+    defer url.deinit(testing.allocator);
+    try testing.expectString(&quot;example.com&quot;, url.host);
+}
+</code></pre>
+<p>For tests that require a full browser environment (DOM, JavaScript, network), use the shared <code>test_session</code> and <code>test_browser</code> fixtures initialized during <code>beforeAll</code>.</p>
+<h3 id="web-api-html-tests" tabindex="-1">Web API HTML Tests <a class="header-anchor" href="#web-api-html-tests" aria-hidden="true">#</a></h3>
+<p>Many DOM and Web API tests are written as HTML files in <code>src/browser/tests/</code>. These tests use JavaScript assertions inside HTML pages served by the local test HTTP server. The <code>htmlRunner</code> function loads each HTML file, executes its JavaScript, and calls <code>testing.assertOk()</code> to verify the result.</p>
+<p>Test files are organized by feature area:</p>
+<pre><code>src/browser/tests/
+  document/         # Document API tests
+  element/          # Element API tests
+  events/           # Event handling tests
+  css/              # CSS and style tests
+  custom_elements/  # Custom Elements tests
+  cdp/              # CDP-specific DOM tests
+  xhr/              # XMLHttpRequest tests
+  ...
+</code></pre>
+<p>To run a specific category of HTML tests:</p>
+<pre><code class="language-bash">TEST_FILTER=&quot;WebApi: #querySelector&quot; make test
+</code></pre>
+<hr>
+<h2 id="end-to-end-tests" tabindex="-1">End-to-End Tests <a class="header-anchor" href="#end-to-end-tests" aria-hidden="true">#</a></h2>
+<p>End-to-end tests verify that Lightpanda works correctly as a complete system, testing the full flow from CDP client connection through page rendering.</p>
+<h3 id="prerequisites" tabindex="-1">Prerequisites <a class="header-anchor" href="#prerequisites" aria-hidden="true">#</a></h3>
+<ol>
+<li>Clone the <a href="https://github.com/lightpanda-io/demo">demo repository</a> into <code>../demo</code> relative to the browser repository</li>
+<li>Install the demo’s <a href="https://github.com/lightpanda-io/demo?tab=readme-ov-file#dependencies-1">Node.js dependencies</a></li>
+<li>Install <a href="https://go.dev">Go</a> version 1.24 or later</li>
+</ol>
+<h3 id="running-e2e-tests" tabindex="-1">Running E2E Tests <a class="header-anchor" href="#running-e2e-tests" aria-hidden="true">#</a></h3>
+<pre><code class="language-bash">make end2end
+</code></pre>
+<p>This launches the Go-based test runner from the demo repository, which connects to Lightpanda via CDP and exercises real-world automation scenarios.</p>
+<hr>
+<h2 id="web-platform-tests-(wpt)" tabindex="-1">Web Platform Tests (WPT) <a class="header-anchor" href="#web-platform-tests-(wpt)" aria-hidden="true">#</a></h2>
+<p>Lightpanda is validated against the standardized <a href="https://web-platform-tests.org/">Web Platform Tests</a>, the same test suite used by major browsers to verify web standards compliance.</p>
+<p>Lightpanda uses <a href="https://github.com/lightpanda-io/wpt/tree/fork">a fork</a> of the WPT repository with a custom <code>testharnessreport.js</code> for integration with the Lightpanda browser. You can view any WPT test case in a standard browser at <a href="https://wpt.live">wpt.live</a>.</p>
+<h3 id="setting-up-the-wpt-server" tabindex="-1">Setting Up the WPT Server <a class="header-anchor" href="#setting-up-the-wpt-server" aria-hidden="true">#</a></h3>
+<h4 id="1.-clone-the-repository" tabindex="-1">1. Clone the Repository <a class="header-anchor" href="#1.-clone-the-repository" aria-hidden="true">#</a></h4>
+<pre><code class="language-bash">git clone -b fork --depth=1 git@github.com:lightpanda-io/wpt.git
+</code></pre>
+<h4 id="2.-configure-custom-hosts" tabindex="-1">2. Configure Custom Hosts <a class="header-anchor" href="#2.-configure-custom-hosts" aria-hidden="true">#</a></h4>
+<p>From inside the <code>wpt/</code> directory:</p>
+<pre><code class="language-bash">./wpt make-hosts-file | sudo tee -a /etc/hosts
+</code></pre>
+<h4 id="3.-generate-the-manifest" tabindex="-1">3. Generate the Manifest <a class="header-anchor" href="#3.-generate-the-manifest" aria-hidden="true">#</a></h4>
+<pre><code class="language-bash">./wpt manifest
+</code></pre>
+<p>See the <a href="https://web-platform-tests.org/running-tests/from-local-system.html">WPT setup guide</a> for full details.</p>
+<h3 id="running-wpt-tests" tabindex="-1">Running WPT Tests <a class="header-anchor" href="#running-wpt-tests" aria-hidden="true">#</a></h3>
+<p>Three terminal sessions are needed:</p>
+<p><strong>Terminal 1 – Start the WPT HTTP server:</strong></p>
+<pre><code class="language-bash">cd wpt/
+./wpt serve
+</code></pre>
+<p><strong>Terminal 2 – Start a Lightpanda browser instance:</strong></p>
+<pre><code class="language-bash">zig build run -- --insecure_disable_tls_host_verification
+</code></pre>
+<p><strong>Terminal 3 – Run the WPT test runner:</strong></p>
+<pre><code class="language-bash">cd ../demo/wptrunner &amp;&amp; go run .
+</code></pre>
+<p>To run a specific test:</p>
+<pre><code class="language-bash">cd ../demo/wptrunner &amp;&amp; go run . Node-childNodes.html
+</code></pre>
+<h3 id="wpt-runner-options" tabindex="-1">WPT Runner Options <a class="header-anchor" href="#wpt-runner-options" aria-hidden="true">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--summary</code></td>
+<td>Show a summary of results</td>
+</tr>
+<tr>
+<td><code>--json</code></td>
+<td>Output results in JSON format</td>
+</tr>
+<tr>
+<td><code>--concurrency</code></td>
+<td>Set the concurrency limit for parallel test execution</td>
+</tr>
+</tbody>
+</table>
+<h3 id="performance-tip" tabindex="-1">Performance Tip <a class="header-anchor" href="#performance-tip" aria-hidden="true">#</a></h3>
+<p>The full WPT suite takes a long time to run. Build in release mode for significantly faster execution:</p>
+<pre><code class="language-bash">zig build -Doptimize=ReleaseFast run
+</code></pre>
+<hr>
+<h2 id="test-architecture-overview" tabindex="-1">Test Architecture Overview <a class="header-anchor" href="#test-architecture-overview" aria-hidden="true">#</a></h2>
+<p>The following diagram illustrates how the different testing layers interact with the Lightpanda browser components:</p>
+<hr>
+<h2 id="troubleshooting" tabindex="-1">Troubleshooting <a class="header-anchor" href="#troubleshooting" aria-hidden="true">#</a></h2>
+<h3 id="tests-fail-to-connect" tabindex="-1">Tests fail to connect <a class="header-anchor" href="#tests-fail-to-connect" aria-hidden="true">#</a></h3>
+<p>If tests fail with connection errors, verify that no other process is using ports 9582 (test HTTP server) or 9583 (test CDP server). The <code>beforeAll</code> setup waits for both servers to be ready before running tests.</p>
+<h3 id="memory-leak-reports" tabindex="-1">Memory leak reports <a class="header-anchor" href="#memory-leak-reports" aria-hidden="true">#</a></h3>
+<p>A test marked as “leaked” means it allocated memory through <code>std.testing.allocator</code> without freeing it. Check for missing <code>defer</code> statements or error paths that skip cleanup.</p>
+<h3 id="wpt-tests-timing-out" tabindex="-1">WPT tests timing out <a class="header-anchor" href="#wpt-tests-timing-out" aria-hidden="true">#</a></h3>
+<p>Ensure the WPT HTTP server is running and the custom hosts are configured in <code>/etc/hosts</code>. Also verify that TLS host verification is disabled when starting the Lightpanda instance for WPT testing.</p>
+<hr>
+<h2 id="related-topics" tabindex="-1">Related Topics <a class="header-anchor" href="#related-topics" aria-hidden="true">#</a></h2>
+<ul>
+<li><a href="building.html">Building from Source</a> – Prerequisites and build instructions</li>
+<li><a href="architecture.html">Architecture</a> – Understanding Lightpanda’s internal structure</li>
+<li><a href="architecture/cdp.html">CDP Protocol</a> – CDP implementation details relevant to E2E testing</li>
+<li><a href="contributing.html">Contributing</a> – Guidelines for submitting test improvements</li>
+</ul>
+</main>
+    <nav data-ds="toc"><div class="toc-title">On this page</div><ul><li><a href="#unit-tests">Unit Tests</a></li><ul><li><a href="#running-unit-tests">Running Unit Tests</a></li><li><a href="#filtering-tests">Filtering Tests</a></li><li><a href="#environment-variables">Environment Variables</a></li><li><a href="#test-infrastructure">Test Infrastructure</a></li><li><a href="#test-lifecycle">Test Lifecycle</a></li><li><a href="#memory-leak-detection">Memory Leak Detection</a></li><li><a href="#writing-unit-tests">Writing Unit Tests</a></li><li><a href="#web-api-html-tests">Web API HTML Tests</a></li></ul><li><a href="#end-to-end-tests">End-to-End Tests</a></li><ul><li><a href="#prerequisites">Prerequisites</a></li><li><a href="#running-e2e-tests">Running E2E Tests</a></li></ul><li><a href="#web-platform-tests-(wpt)">Web Platform Tests (WPT)</a></li><ul><li><a href="#setting-up-the-wpt-server">Setting Up the WPT Server</a></li><ul><li><a href="#1.-clone-the-repository">1. Clone the Repository</a></li><li><a href="#2.-configure-custom-hosts">2. Configure Custom Hosts</a></li><li><a href="#3.-generate-the-manifest">3. Generate the Manifest</a></li></ul><li><a href="#running-wpt-tests">Running WPT Tests</a></li><li><a href="#wpt-runner-options">WPT Runner Options</a></li><li><a href="#performance-tip">Performance Tip</a></li></ul><li><a href="#test-architecture-overview">Test Architecture Overview</a></li><li><a href="#troubleshooting">Troubleshooting</a></li><ul><li><a href="#tests-fail-to-connect">Tests fail to connect</a></li><li><a href="#memory-leak-reports">Memory leak reports</a></li><li><a href="#wpt-tests-timing-out">WPT tests timing out</a></li></ul><li><a href="#related-topics">Related Topics</a></li></ul></nav>
+  </div>
+  <footer data-ds="footer">
+    <a href="https://docsmith.aigne.io/" target="_blank" rel="noopener noreferrer" class="docsmith-badge">
+      <svg class="docsmith-badge-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+        <polyline points="14 2 14 8 20 8"></polyline>
+        <line x1="16" y1="13" x2="8" y2="13"></line>
+        <line x1="16" y1="17" x2="8" y2="17"></line>
+        <polyline points="10 9 9 9 8 9"></polyline>
+      </svg>
+      <span>Built with <strong>AIGNE DocSmith</strong></span>
+    </a>
+  </footer>
+
+</body>
+</html>

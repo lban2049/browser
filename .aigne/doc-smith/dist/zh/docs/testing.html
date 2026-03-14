@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>测试 - lightpanda-browser</title>
+  <meta name="description" content="">
+  <meta property="og:title" content="测试">
+  <meta property="og:description" content="">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="../../assets/docsmith.css">
+  <link rel="stylesheet" href="../../assets/theme.css">
+  <script src="../../assets/nav.js" defer></script>
+  <script>
+    // Initialize theme from localStorage or system preference
+    (function() {
+      const stored = localStorage.getItem('docsmith-theme');
+      if (stored) {
+        document.documentElement.setAttribute('data-theme', stored);
+      } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    })();
+
+    function toggleTheme() {
+      const html = document.documentElement;
+      const current = html.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      localStorage.setItem('docsmith-theme', next);
+    }
+  </script>
+</head>
+<body data-ds-path="/testing">
+  <header data-ds="header">
+    <a href="/zh/index.html" class="site-title">lightpanda-browser</a>
+    <div class="header-controls">
+
+    <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
+      <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="5"></circle>
+        <line x1="12" y1="1" x2="12" y2="3"></line>
+        <line x1="12" y1="21" x2="12" y2="23"></line>
+        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+        <line x1="1" y1="12" x2="3" y2="12"></line>
+        <line x1="21" y1="12" x2="23" y2="12"></line>
+        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+      </svg>
+      <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+      </svg>
+    </button>
+    </div>
+  </header>
+  <div data-ds="layout">
+    <aside data-ds="sidebar"><!-- nav.js 渲染 --></aside>
+    <main data-ds="content"><h1 id="%E6%B5%8B%E8%AF%95" tabindex="-1">测试 <a class="header-anchor" href="#%E6%B5%8B%E8%AF%95" aria-hidden="true">#</a></h1>
+<p>Lightpanda 采用多层测试策略来确保其浏览器引擎、CDP 协议实现和 Web API 接口的正确性。本页面介绍三种主要的测试方法：单元测试、端到端测试和 Web 平台测试（WPT）。</p>
+<p><strong>前提条件：</strong>在运行任何测试之前，您应该已经从源码<a href="building.html">构建了 Lightpanda</a>。</p>
+<hr>
+<h2 id="%E5%8D%95%E5%85%83%E6%B5%8B%E8%AF%95" tabindex="-1">单元测试 <a class="header-anchor" href="#%E5%8D%95%E5%85%83%E6%B5%8B%E8%AF%95" aria-hidden="true">#</a></h2>
+<p>单元测试是验证浏览器引擎各个组件的主要方式。Lightpanda 使用 Zig 的内置测试框架，并配备了一个自定义测试运行器，提供增强的报告、内存泄漏检测和性能跟踪功能。</p>
+<h3 id="%E8%BF%90%E8%A1%8C%E5%8D%95%E5%85%83%E6%B5%8B%E8%AF%95" tabindex="-1">运行单元测试 <a class="header-anchor" href="#%E8%BF%90%E8%A1%8C%E5%8D%95%E5%85%83%E6%B5%8B%E8%AF%95" aria-hidden="true">#</a></h3>
+<p>运行所有单元测试的最简单方式：</p>
+<pre><code class="language-bash">make test
+</code></pre>
+<p>在底层，这会执行启用了 Zig 引用追踪的 <code>zig build test</code>。自定义测试运行器（<code>src/test_runner.zig</code>）替代了默认的 Zig 测试运行器，提供以下功能：</p>
+<ul>
+<li>带颜色的通过/失败/跳过输出</li>
+<li>每个测试的内存泄漏检测</li>
+<li>最慢测试追踪（前 5 个）</li>
+<li>可选的 JSON 格式指标输出</li>
+</ul>
+<h3 id="%E8%BF%87%E6%BB%A4%E6%B5%8B%E8%AF%95" tabindex="-1">过滤测试 <a class="header-anchor" href="#%E8%BF%87%E6%BB%A4%E6%B5%8B%E8%AF%95" aria-hidden="true">#</a></h3>
+<p>您可以使用 <code>F</code> 变量或 <code>TEST_FILTER</code> 环境变量来运行部分测试：</p>
+<pre><code class="language-bash"># Run only tests matching &quot;server&quot;
+make test F=&quot;server&quot;
+
+# Run tests with a subfilter (filter#subfilter format)
+TEST_FILTER=&quot;WebApi: #querySelector&quot; zig build test
+</code></pre>
+<p>过滤器使用子字符串搜索来匹配测试名称。子过滤器（<code>#</code> 后面的部分）提供第二级过滤，主要用于 WebApi HTML 测试。</p>
+<h3 id="%E7%8E%AF%E5%A2%83%E5%8F%98%E9%87%8F" tabindex="-1">环境变量 <a class="header-anchor" href="#%E7%8E%AF%E5%A2%83%E5%8F%98%E9%87%8F" aria-hidden="true">#</a></h3>
+<p>测试运行器响应以下环境变量：</p>
+<table>
+<thead>
+<tr>
+<th>变量</th>
+<th>默认值</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TEST_FILTER</code></td>
+<td>（无）</td>
+<td>按名称过滤测试。使用 <code>#</code> 分隔过滤器和子过滤器</td>
+</tr>
+<tr>
+<td><code>TEST_VERBOSE</code></td>
+<td><code>true</code></td>
+<td>显示各个测试的名称和耗时</td>
+</tr>
+<tr>
+<td><code>TEST_FAIL_FIRST</code></td>
+<td><code>false</code></td>
+<td>在第一个测试失败时停止</td>
+</tr>
+<tr>
+<td><code>METRICS</code></td>
+<td><code>false</code></td>
+<td>以 JSON 格式输出分配和计时指标</td>
+</tr>
+</tbody>
+</table>
+<h3 id="%E6%B5%8B%E8%AF%95%E5%9F%BA%E7%A1%80%E8%AE%BE%E6%96%BD" tabindex="-1">测试基础设施 <a class="header-anchor" href="#%E6%B5%8B%E8%AF%95%E5%9F%BA%E7%A1%80%E8%AE%BE%E6%96%BD" aria-hidden="true">#</a></h3>
+<p><code>src/testing.zig</code> 中的测试框架提供了标准库之外的多种实用工具：</p>
+<ul>
+<li><strong><code>expectEqual</code></strong> – 统一的断言工具，可处理字符串、结构体、可选值和标签联合体</li>
+<li><strong><code>expectDelta</code></strong> – 在容差范围内的数值比较</li>
+<li><strong><code>expectJson</code></strong> – 深度 JSON 值比较，提供详细的差异输出</li>
+<li><strong><code>htmlRunner</code></strong> – 针对本地测试服务器运行基于 HTML 的 Web API 测试文件</li>
+<li><strong><code>LogFilter</code></strong> – 在触发预期错误的测试中临时抑制特定日志类别</li>
+</ul>
+<h3 id="%E6%B5%8B%E8%AF%95%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F" tabindex="-1">测试生命周期 <a class="header-anchor" href="#%E6%B5%8B%E8%AF%95%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F" aria-hidden="true">#</a></h3>
+<p>每次测试运行遵循设置/清理的生命周期：</p>
+<ol>
+<li><strong><code>beforeAll</code></strong> – 初始化应用程序、HTTP 客户端、浏览器实例、会话、本地 CDP 服务器（端口 9583）和本地 HTTP 测试服务器（端口 9582）</li>
+<li><strong>各个测试</strong> – 每个测试获得自己的分配器实例用于泄漏检测</li>
+<li><strong><code>afterAll</code></strong> – 关闭服务器、收集 V8 堆统计信息并释放所有资源</li>
+</ol>
+<p>此生命周期确保测试拥有功能完整的浏览器环境，包括 JavaScript 执行和网络功能。</p>
+<h3 id="%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F%E6%A3%80%E6%B5%8B" tabindex="-1">内存泄漏检测 <a class="header-anchor" href="#%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F%E6%A3%80%E6%B5%8B" aria-hidden="true">#</a></h3>
+<p>每个测试都使用 Zig 的 <code>std.testing.allocator</code> 检查内存泄漏。测试运行器还将分配包装在 <code>TrackingAllocator</code> 中，记录以下信息：</p>
+<ul>
+<li>总分配次数</li>
+<li>总重分配次数</li>
+<li>总分配字节数</li>
+</ul>
+<p>当 <code>METRICS</code> 环境变量设置为 <code>true</code> 时，这些统计信息将在测试运行结束时以 JSON 格式输出，同时包含 V8 峰值内存使用量。</p>
+<pre><code class="language-json">[
+  {
+    &quot;name&quot;: &quot;browser&quot;,
+    &quot;bench&quot;: {
+      &quot;duration&quot;: 1234567890,
+      &quot;alloc_nb&quot;: 500,
+      &quot;realloc_nb&quot;: 50,
+      &quot;alloc_size&quot;: 1048576
+    }
+  },
+  {
+    &quot;name&quot;: &quot;v8&quot;,
+    &quot;bench&quot;: {
+      &quot;duration&quot;: 1234567890,
+      &quot;alloc_nb&quot;: 0,
+      &quot;realloc_nb&quot;: 0,
+      &quot;alloc_size&quot;: 8388608
+    }
+  }
+]
+</code></pre>
+<h3 id="%E7%BC%96%E5%86%99%E5%8D%95%E5%85%83%E6%B5%8B%E8%AF%95" tabindex="-1">编写单元测试 <a class="header-anchor" href="#%E7%BC%96%E5%86%99%E5%8D%95%E5%85%83%E6%B5%8B%E8%AF%95" aria-hidden="true">#</a></h3>
+<p>Zig 测试使用 <code>test</code> 关键字在源文件中内联声明。Lightpanda 测试通常使用共享的测试实用工具：</p>
+<pre><code class="language-zig">const testing = @import(&quot;testing.zig&quot;);
+
+test &quot;parse valid URL&quot; {
+    const url = try Url.parse(testing.allocator, &quot;https://example.com/path&quot;);
+    defer url.deinit(testing.allocator);
+    try testing.expectString(&quot;example.com&quot;, url.host);
+}
+</code></pre>
+<p>对于需要完整浏览器环境（DOM、JavaScript、网络）的测试，请使用在 <code>beforeAll</code> 期间初始化的共享 <code>test_session</code> 和 <code>test_browser</code> fixture。</p>
+<h3 id="web-api-html-%E6%B5%8B%E8%AF%95" tabindex="-1">Web API HTML 测试 <a class="header-anchor" href="#web-api-html-%E6%B5%8B%E8%AF%95" aria-hidden="true">#</a></h3>
+<p>许多 DOM 和 Web API 测试以 HTML 文件的形式编写在 <code>src/browser/tests/</code> 中。这些测试使用 HTML 页面中的 JavaScript 断言，由本地测试 HTTP 服务器提供服务。<code>htmlRunner</code> 函数加载每个 HTML 文件，执行其 JavaScript，并调用 <code>testing.assertOk()</code> 来验证结果。</p>
+<p>测试文件按功能区域组织：</p>
+<pre><code>src/browser/tests/
+  document/         # Document API tests
+  element/          # Element API tests
+  events/           # Event handling tests
+  css/              # CSS and style tests
+  custom_elements/  # Custom Elements tests
+  cdp/              # CDP-specific DOM tests
+  xhr/              # XMLHttpRequest tests
+  ...
+</code></pre>
+<p>运行特定类别的 HTML 测试：</p>
+<pre><code class="language-bash">TEST_FILTER=&quot;WebApi: #querySelector&quot; make test
+</code></pre>
+<hr>
+<h2 id="%E7%AB%AF%E5%88%B0%E7%AB%AF%E6%B5%8B%E8%AF%95" tabindex="-1">端到端测试 <a class="header-anchor" href="#%E7%AB%AF%E5%88%B0%E7%AB%AF%E6%B5%8B%E8%AF%95" aria-hidden="true">#</a></h2>
+<p>端到端测试验证 Lightpanda 作为完整系统的正确运行，测试从 CDP 客户端连接到页面渲染的完整流程。</p>
+<h3 id="%E5%89%8D%E6%8F%90%E6%9D%A1%E4%BB%B6" tabindex="-1">前提条件 <a class="header-anchor" href="#%E5%89%8D%E6%8F%90%E6%9D%A1%E4%BB%B6" aria-hidden="true">#</a></h3>
+<ol>
+<li>将<a href="https://github.com/lightpanda-io/demo">示例仓库</a>克隆到相对于浏览器仓库的 <code>../demo</code> 路径</li>
+<li>安装示例的 <a href="https://github.com/lightpanda-io/demo?tab=readme-ov-file#dependencies-1">Node.js 依赖</a></li>
+<li>安装 <a href="https://go.dev">Go</a> 1.24 或更高版本</li>
+</ol>
+<h3 id="%E8%BF%90%E8%A1%8C%E7%AB%AF%E5%88%B0%E7%AB%AF%E6%B5%8B%E8%AF%95" tabindex="-1">运行端到端测试 <a class="header-anchor" href="#%E8%BF%90%E8%A1%8C%E7%AB%AF%E5%88%B0%E7%AB%AF%E6%B5%8B%E8%AF%95" aria-hidden="true">#</a></h3>
+<pre><code class="language-bash">make end2end
+</code></pre>
+<p>这将启动示例仓库中基于 Go 的测试运行器，通过 CDP 连接到 Lightpanda 并执行真实的自动化场景。</p>
+<hr>
+<h2 id="web-%E5%B9%B3%E5%8F%B0%E6%B5%8B%E8%AF%95%EF%BC%88wpt%EF%BC%89" tabindex="-1">Web 平台测试（WPT） <a class="header-anchor" href="#web-%E5%B9%B3%E5%8F%B0%E6%B5%8B%E8%AF%95%EF%BC%88wpt%EF%BC%89" aria-hidden="true">#</a></h2>
+<p>Lightpanda 使用标准化的 <a href="https://web-platform-tests.org/">Web 平台测试</a>进行验证，这与主流浏览器用于验证 Web 标准合规性的测试套件相同。</p>
+<p>Lightpanda 使用 WPT 仓库的<a href="https://github.com/lightpanda-io/wpt/tree/fork">一个分支</a>，其中包含用于与 Lightpanda 浏览器集成的自定义 <code>testharnessreport.js</code>。您可以在标准浏览器中通过 <a href="https://wpt.live">wpt.live</a> 查看任何 WPT 测试用例。</p>
+<h3 id="%E8%AE%BE%E7%BD%AE-wpt-%E6%9C%8D%E5%8A%A1%E5%99%A8" tabindex="-1">设置 WPT 服务器 <a class="header-anchor" href="#%E8%AE%BE%E7%BD%AE-wpt-%E6%9C%8D%E5%8A%A1%E5%99%A8" aria-hidden="true">#</a></h3>
+<h4 id="1.-%E5%85%8B%E9%9A%86%E4%BB%93%E5%BA%93" tabindex="-1">1. 克隆仓库 <a class="header-anchor" href="#1.-%E5%85%8B%E9%9A%86%E4%BB%93%E5%BA%93" aria-hidden="true">#</a></h4>
+<pre><code class="language-bash">git clone -b fork --depth=1 git@github.com:lightpanda-io/wpt.git
+</code></pre>
+<h4 id="2.-%E9%85%8D%E7%BD%AE%E8%87%AA%E5%AE%9A%E4%B9%89%E4%B8%BB%E6%9C%BA" tabindex="-1">2. 配置自定义主机 <a class="header-anchor" href="#2.-%E9%85%8D%E7%BD%AE%E8%87%AA%E5%AE%9A%E4%B9%89%E4%B8%BB%E6%9C%BA" aria-hidden="true">#</a></h4>
+<p>在 <code>wpt/</code> 目录内执行：</p>
+<pre><code class="language-bash">./wpt make-hosts-file | sudo tee -a /etc/hosts
+</code></pre>
+<h4 id="3.-%E7%94%9F%E6%88%90%E6%B8%85%E5%8D%95%E6%96%87%E4%BB%B6" tabindex="-1">3. 生成清单文件 <a class="header-anchor" href="#3.-%E7%94%9F%E6%88%90%E6%B8%85%E5%8D%95%E6%96%87%E4%BB%B6" aria-hidden="true">#</a></h4>
+<pre><code class="language-bash">./wpt manifest
+</code></pre>
+<p>详细信息请参阅 <a href="https://web-platform-tests.org/running-tests/from-local-system.html">WPT 设置指南</a>。</p>
+<h3 id="%E8%BF%90%E8%A1%8C-wpt-%E6%B5%8B%E8%AF%95" tabindex="-1">运行 WPT 测试 <a class="header-anchor" href="#%E8%BF%90%E8%A1%8C-wpt-%E6%B5%8B%E8%AF%95" aria-hidden="true">#</a></h3>
+<p>需要三个终端会话：</p>
+<p><strong>终端 1 – 启动 WPT HTTP 服务器：</strong></p>
+<pre><code class="language-bash">cd wpt/
+./wpt serve
+</code></pre>
+<p><strong>终端 2 – 启动 Lightpanda 浏览器实例：</strong></p>
+<pre><code class="language-bash">zig build run -- --insecure_disable_tls_host_verification
+</code></pre>
+<p><strong>终端 3 – 运行 WPT 测试运行器：</strong></p>
+<pre><code class="language-bash">cd ../demo/wptrunner &amp;&amp; go run .
+</code></pre>
+<p>运行特定测试：</p>
+<pre><code class="language-bash">cd ../demo/wptrunner &amp;&amp; go run . Node-childNodes.html
+</code></pre>
+<h3 id="wpt-%E8%BF%90%E8%A1%8C%E5%99%A8%E9%80%89%E9%A1%B9" tabindex="-1">WPT 运行器选项 <a class="header-anchor" href="#wpt-%E8%BF%90%E8%A1%8C%E5%99%A8%E9%80%89%E9%A1%B9" aria-hidden="true">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>选项</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--summary</code></td>
+<td>显示结果摘要</td>
+</tr>
+<tr>
+<td><code>--json</code></td>
+<td>以 JSON 格式输出结果</td>
+</tr>
+<tr>
+<td><code>--concurrency</code></td>
+<td>设置并行测试执行的并发限制</td>
+</tr>
+</tbody>
+</table>
+<h3 id="%E6%80%A7%E8%83%BD%E6%8F%90%E7%A4%BA" tabindex="-1">性能提示 <a class="header-anchor" href="#%E6%80%A7%E8%83%BD%E6%8F%90%E7%A4%BA" aria-hidden="true">#</a></h3>
+<p>完整的 WPT 套件运行时间较长。使用发布模式构建可以显著加快执行速度：</p>
+<pre><code class="language-bash">zig build -Doptimize=ReleaseFast run
+</code></pre>
+<hr>
+<h2 id="%E6%B5%8B%E8%AF%95%E6%9E%B6%E6%9E%84%E6%A6%82%E8%A7%88" tabindex="-1">测试架构概览 <a class="header-anchor" href="#%E6%B5%8B%E8%AF%95%E6%9E%B6%E6%9E%84%E6%A6%82%E8%A7%88" aria-hidden="true">#</a></h2>
+<p>下图展示了不同测试层如何与 Lightpanda 浏览器组件交互：</p>
+<hr>
+<h2 id="%E6%95%85%E9%9A%9C%E6%8E%92%E9%99%A4" tabindex="-1">故障排除 <a class="header-anchor" href="#%E6%95%85%E9%9A%9C%E6%8E%92%E9%99%A4" aria-hidden="true">#</a></h2>
+<h3 id="%E6%B5%8B%E8%AF%95%E8%BF%9E%E6%8E%A5%E5%A4%B1%E8%B4%A5" tabindex="-1">测试连接失败 <a class="header-anchor" href="#%E6%B5%8B%E8%AF%95%E8%BF%9E%E6%8E%A5%E5%A4%B1%E8%B4%A5" aria-hidden="true">#</a></h3>
+<p>如果测试因连接错误而失败，请验证没有其他进程占用端口 9582（测试 HTTP 服务器）或 9583（测试 CDP 服务器）。<code>beforeAll</code> 设置会在运行测试之前等待两个服务器就绪。</p>
+<h3 id="%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F%E6%8A%A5%E5%91%8A" tabindex="-1">内存泄漏报告 <a class="header-anchor" href="#%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F%E6%8A%A5%E5%91%8A" aria-hidden="true">#</a></h3>
+<p>标记为"leaked"的测试意味着它通过 <code>std.testing.allocator</code> 分配了内存但未释放。请检查是否缺少 <code>defer</code> 语句或跳过清理的错误路径。</p>
+<h3 id="wpt-%E6%B5%8B%E8%AF%95%E8%B6%85%E6%97%B6" tabindex="-1">WPT 测试超时 <a class="header-anchor" href="#wpt-%E6%B5%8B%E8%AF%95%E8%B6%85%E6%97%B6" aria-hidden="true">#</a></h3>
+<p>确保 WPT HTTP 服务器正在运行且自定义主机已在 <code>/etc/hosts</code> 中配置。同时验证在启动用于 WPT 测试的 Lightpanda 实例时已禁用 TLS 主机验证。</p>
+<hr>
+<h2 id="%E7%9B%B8%E5%85%B3%E4%B8%BB%E9%A2%98" tabindex="-1">相关主题 <a class="header-anchor" href="#%E7%9B%B8%E5%85%B3%E4%B8%BB%E9%A2%98" aria-hidden="true">#</a></h2>
+<ul>
+<li><a href="building.html">从源码构建</a> – 前提条件和构建说明</li>
+<li><a href="architecture.html">架构</a> – 了解 Lightpanda 的内部结构</li>
+<li><a href="architecture/cdp.html">CDP 协议</a> – 与端到端测试相关的 CDP 实现细节</li>
+<li><a href="contributing.html">贡献指南</a> – 提交测试改进的指南</li>
+</ul>
+</main>
+    <nav data-ds="toc"><div class="toc-title">本页内容</div><ul><li><a href="#%E5%8D%95%E5%85%83%E6%B5%8B%E8%AF%95">单元测试</a></li><ul><li><a href="#%E8%BF%90%E8%A1%8C%E5%8D%95%E5%85%83%E6%B5%8B%E8%AF%95">运行单元测试</a></li><li><a href="#%E8%BF%87%E6%BB%A4%E6%B5%8B%E8%AF%95">过滤测试</a></li><li><a href="#%E7%8E%AF%E5%A2%83%E5%8F%98%E9%87%8F">环境变量</a></li><li><a href="#%E6%B5%8B%E8%AF%95%E5%9F%BA%E7%A1%80%E8%AE%BE%E6%96%BD">测试基础设施</a></li><li><a href="#%E6%B5%8B%E8%AF%95%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F">测试生命周期</a></li><li><a href="#%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F%E6%A3%80%E6%B5%8B">内存泄漏检测</a></li><li><a href="#%E7%BC%96%E5%86%99%E5%8D%95%E5%85%83%E6%B5%8B%E8%AF%95">编写单元测试</a></li><li><a href="#web-api-html-%E6%B5%8B%E8%AF%95">Web API HTML 测试</a></li></ul><li><a href="#%E7%AB%AF%E5%88%B0%E7%AB%AF%E6%B5%8B%E8%AF%95">端到端测试</a></li><ul><li><a href="#%E5%89%8D%E6%8F%90%E6%9D%A1%E4%BB%B6">前提条件</a></li><li><a href="#%E8%BF%90%E8%A1%8C%E7%AB%AF%E5%88%B0%E7%AB%AF%E6%B5%8B%E8%AF%95">运行端到端测试</a></li></ul><li><a href="#web-%E5%B9%B3%E5%8F%B0%E6%B5%8B%E8%AF%95%EF%BC%88wpt%EF%BC%89">Web 平台测试（WPT）</a></li><ul><li><a href="#%E8%AE%BE%E7%BD%AE-wpt-%E6%9C%8D%E5%8A%A1%E5%99%A8">设置 WPT 服务器</a></li><ul><li><a href="#1.-%E5%85%8B%E9%9A%86%E4%BB%93%E5%BA%93">1. 克隆仓库</a></li><li><a href="#2.-%E9%85%8D%E7%BD%AE%E8%87%AA%E5%AE%9A%E4%B9%89%E4%B8%BB%E6%9C%BA">2. 配置自定义主机</a></li><li><a href="#3.-%E7%94%9F%E6%88%90%E6%B8%85%E5%8D%95%E6%96%87%E4%BB%B6">3. 生成清单文件</a></li></ul><li><a href="#%E8%BF%90%E8%A1%8C-wpt-%E6%B5%8B%E8%AF%95">运行 WPT 测试</a></li><li><a href="#wpt-%E8%BF%90%E8%A1%8C%E5%99%A8%E9%80%89%E9%A1%B9">WPT 运行器选项</a></li><li><a href="#%E6%80%A7%E8%83%BD%E6%8F%90%E7%A4%BA">性能提示</a></li></ul><li><a href="#%E6%B5%8B%E8%AF%95%E6%9E%B6%E6%9E%84%E6%A6%82%E8%A7%88">测试架构概览</a></li><li><a href="#%E6%95%85%E9%9A%9C%E6%8E%92%E9%99%A4">故障排除</a></li><ul><li><a href="#%E6%B5%8B%E8%AF%95%E8%BF%9E%E6%8E%A5%E5%A4%B1%E8%B4%A5">测试连接失败</a></li><li><a href="#%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F%E6%8A%A5%E5%91%8A">内存泄漏报告</a></li><li><a href="#wpt-%E6%B5%8B%E8%AF%95%E8%B6%85%E6%97%B6">WPT 测试超时</a></li></ul><li><a href="#%E7%9B%B8%E5%85%B3%E4%B8%BB%E9%A2%98">相关主题</a></li></ul></nav>
+  </div>
+  <footer data-ds="footer">
+    <a href="https://docsmith.aigne.io/" target="_blank" rel="noopener noreferrer" class="docsmith-badge">
+      <svg class="docsmith-badge-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+        <polyline points="14 2 14 8 20 8"></polyline>
+        <line x1="16" y1="13" x2="8" y2="13"></line>
+        <line x1="16" y1="17" x2="8" y2="17"></line>
+        <polyline points="10 9 9 9 8 9"></polyline>
+      </svg>
+      <span>Built with <strong>AIGNE DocSmith</strong></span>
+    </a>
+  </footer>
+
+</body>
+</html>

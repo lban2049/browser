@@ -1,0 +1,9 @@
+kind: image
+generation:
+  prompt: "Testing architecture diagram showing unit tests targeting individual modules, HTML-based Web API tests running through a local HTTP server and browser session, E2E tests connecting via CDP, and WPT tests using the standardized Web Platform Tests infrastructure"
+  model: google/gemini-3-pro-image-preview
+  createdAt: "2026-03-14T10:00:00Z"
+documents:
+  - path: /testing
+languages:
+  - en

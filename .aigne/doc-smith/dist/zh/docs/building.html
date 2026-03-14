@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>从源码构建 - lightpanda-browser</title>
+  <meta name="description" content="">
+  <meta property="og:title" content="从源码构建">
+  <meta property="og:description" content="">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="../../assets/docsmith.css">
+  <link rel="stylesheet" href="../../assets/theme.css">
+  <script src="../../assets/nav.js" defer></script>
+  <script>
+    // Initialize theme from localStorage or system preference
+    (function() {
+      const stored = localStorage.getItem('docsmith-theme');
+      if (stored) {
+        document.documentElement.setAttribute('data-theme', stored);
+      } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    })();
+
+    function toggleTheme() {
+      const html = document.documentElement;
+      const current = html.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      localStorage.setItem('docsmith-theme', next);
+    }
+  </script>
+</head>
+<body data-ds-path="/building">
+  <header data-ds="header">
+    <a href="/zh/index.html" class="site-title">lightpanda-browser</a>
+    <div class="header-controls">
+
+    <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
+      <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="5"></circle>
+        <line x1="12" y1="1" x2="12" y2="3"></line>
+        <line x1="12" y1="21" x2="12" y2="23"></line>
+        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+        <line x1="1" y1="12" x2="3" y2="12"></line>
+        <line x1="21" y1="12" x2="23" y2="12"></line>
+        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+      </svg>
+      <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+      </svg>
+    </button>
+    </div>
+  </header>
+  <div data-ds="layout">
+    <aside data-ds="sidebar"><!-- nav.js 渲染 --></aside>
+    <main data-ds="content"><h1 id="%E4%BB%8E%E6%BA%90%E7%A0%81%E6%9E%84%E5%BB%BA" tabindex="-1">从源码构建 <a class="header-anchor" href="#%E4%BB%8E%E6%BA%90%E7%A0%81%E6%9E%84%E5%BB%BA" aria-hidden="true">#</a></h1>
+<p>Lightpanda 浏览器使用 <a href="https://ziglang.org/">Zig</a> 编写，依赖多个原生库，包括 V8、libcurl 和 html5ever。本指南将介绍如何安装前置依赖、构建浏览器以及配置开发选项。</p>
+<blockquote>
+<p><strong>前置条件：</strong>在开始构建之前，请确保你熟悉命令行开发工具。有关项目的介绍，请参阅<a href="overview.html">概述</a>。</p>
+</blockquote>
+<hr>
+<h2 id="%E7%B3%BB%E7%BB%9F%E8%A6%81%E6%B1%82" tabindex="-1">系统要求 <a class="header-anchor" href="#%E7%B3%BB%E7%BB%9F%E8%A6%81%E6%B1%82" aria-hidden="true">#</a></h2>
+<p>构建 Lightpanda 需要以下核心工具：</p>
+<table>
+<thead>
+<tr>
+<th>工具</th>
+<th>版本</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Zig</strong></td>
+<td>0.15.2（精确版本）</td>
+<td>主要构建系统和编程语言</td>
+</tr>
+<tr>
+<td><strong>Rust</strong></td>
+<td>stable</td>
+<td>html5ever HTML 解析器所需</td>
+</tr>
+<tr>
+<td><strong>Git</strong></td>
+<td>任意近期版本</td>
+<td>克隆代码仓库</td>
+</tr>
+<tr>
+<td><strong>Make</strong></td>
+<td>任意近期版本</td>
+<td>便捷构建目标</td>
+</tr>
+</tbody>
+</table>
+<p>Zig 必须安装精确的 <strong>0.15.2</strong> 版本。由于 Zig 尚未提供稳定的 ABI，其他版本不保证能正常工作。</p>
+<h2 id="%E5%B9%B3%E5%8F%B0%E7%89%B9%E5%AE%9A%E4%BE%9D%E8%B5%96" tabindex="-1">平台特定依赖 <a class="header-anchor" href="#%E5%B9%B3%E5%8F%B0%E7%89%B9%E5%AE%9A%E4%BE%9D%E8%B5%96" aria-hidden="true">#</a></h2>
+<h3 id="debian-%2F-ubuntu" tabindex="-1">Debian / Ubuntu <a class="header-anchor" href="#debian-%2F-ubuntu" aria-hidden="true">#</a></h3>
+<p>安装编译 V8 和其他原生依赖所需的系统包：</p>
+<pre><code class="language-bash">sudo apt install xz-utils ca-certificates \
+    pkg-config libglib2.0-dev \
+    clang make curl git
+</code></pre>
+<p>然后通过官方安装程序安装 Rust：</p>
+<pre><code class="language-bash">curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+</code></pre>
+<h3 id="macos" tabindex="-1">macOS <a class="header-anchor" href="#macos" aria-hidden="true">#</a></h3>
+<p>在 macOS 上，你需要 CMake（用于 BoringSSL）和 Rust：</p>
+<pre><code class="language-bash">brew install cmake
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+</code></pre>
+<p>还需要安装 Xcode 命令行工具。如果你尚未安装：</p>
+<pre><code class="language-bash">xcode-select --install
+</code></pre>
+<h3 id="nix" tabindex="-1">Nix <a class="header-anchor" href="#nix" aria-hidden="true">#</a></h3>
+<p>如果你使用 Nix，项目包含一个 <code>flake.nix</code>，提供了包含所有依赖的完整开发环境：</p>
+<pre><code class="language-bash">nix develop
+</code></pre>
+<p>这会设置一个符合 FHS 标准的环境，包含 Zig 0.15.2、Rust、Python 3、CMake、pkg-config、GCC 以及所有必需的库（expat、glib、glibc、zlib）。无需额外的手动安装。</p>
+<hr>
+<h2 id="%E5%85%8B%E9%9A%86%E4%BB%A3%E7%A0%81%E4%BB%93%E5%BA%93" tabindex="-1">克隆代码仓库 <a class="header-anchor" href="#%E5%85%8B%E9%9A%86%E4%BB%A3%E7%A0%81%E4%BB%93%E5%BA%93" aria-hidden="true">#</a></h2>
+<pre><code class="language-bash">git clone https://github.com/lightpanda-io/browser.git
+cd browser
+</code></pre>
+<hr>
+<h2 id="%E6%9E%84%E5%BB%BA%E5%91%BD%E4%BB%A4" tabindex="-1">构建命令 <a class="header-anchor" href="#%E6%9E%84%E5%BB%BA%E5%91%BD%E4%BB%A4" aria-hidden="true">#</a></h2>
+<h3 id="%E4%BD%BF%E7%94%A8-make-%E5%BF%AB%E9%80%9F%E6%9E%84%E5%BB%BA" tabindex="-1">使用 Make 快速构建 <a class="header-anchor" href="#%E4%BD%BF%E7%94%A8-make-%E5%BF%AB%E9%80%9F%E6%9E%84%E5%BB%BA" aria-hidden="true">#</a></h3>
+<p><code>Makefile</code> 提供了常用工作流的便捷目标：</p>
+<pre><code class="language-bash"># Release 构建（包含 V8 快照以加快启动速度）
+make build
+
+# Debug 构建
+make build-dev
+</code></pre>
+<p>Release 构建（<code>make build</code>）会自动执行两个步骤：</p>
+<ol>
+<li>在 <code>ReleaseFast</code> 模式下<strong>生成 V8 快照</strong></li>
+<li>在 <code>ReleaseFast</code> 模式下使用嵌入的快照<strong>编译浏览器</strong></li>
+</ol>
+<p>生成的二进制文件位于 <code>./zig-out/bin/lightpanda</code>。</p>
+<h3 id="%E7%9B%B4%E6%8E%A5%E4%BD%BF%E7%94%A8-zig" tabindex="-1">直接使用 Zig <a class="header-anchor" href="#%E7%9B%B4%E6%8E%A5%E4%BD%BF%E7%94%A8-zig" aria-hidden="true">#</a></h3>
+<p>你也可以直接调用 Zig 构建系统以获得更多控制：</p>
+<pre><code class="language-bash"># 默认（debug）构建
+zig build
+
+# 构建并立即运行
+zig build run
+
+# Release 构建以获得最佳性能
+zig build -Doptimize=ReleaseFast
+</code></pre>
+<h3 id="%E6%9E%84%E5%BB%BA%E9%80%89%E9%A1%B9" tabindex="-1">构建选项 <a class="header-anchor" href="#%E6%9E%84%E5%BB%BA%E9%80%89%E9%A1%B9" aria-hidden="true">#</a></h3>
+<p><code>build.zig</code> 文件提供了多个配置选项：</p>
+<table>
+<thead>
+<tr>
+<th>选项</th>
+<th>类型</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>optimize</code></td>
+<td>enum</td>
+<td>优化级别：<code>Debug</code>、<code>ReleaseSafe</code>、<code>ReleaseFast</code>、<code>ReleaseSmall</code></td>
+</tr>
+<tr>
+<td><code>snapshot_path</code></td>
+<td>string</td>
+<td>预构建 V8 快照二进制文件的路径</td>
+</tr>
+<tr>
+<td><code>prebuilt_v8_path</code></td>
+<td>string</td>
+<td>预构建 <code>libc_v8.a</code> 的路径，用于跳过 V8 编译</td>
+</tr>
+<tr>
+<td><code>git_commit</code></td>
+<td>string</td>
+<td>嵌入二进制文件的 Git 提交哈希（默认为 <code>&quot;dev&quot;</code>）</td>
+</tr>
+<tr>
+<td><code>tsan</code></td>
+<td>bool</td>
+<td>启用线程检测器</td>
+</tr>
+<tr>
+<td><code>asan</code></td>
+<td>bool</td>
+<td>启用地址检测器</td>
+</tr>
+<tr>
+<td><code>csan</code></td>
+<td>enum</td>
+<td>启用 C 检测器</td>
+</tr>
+</tbody>
+</table>
+<p>使用多个选项的示例：</p>
+<pre><code class="language-bash">zig build -Doptimize=ReleaseFast -Dgit_commit=$(git rev-parse --short HEAD)
+</code></pre>
+<hr>
+<h2 id="v8-%E5%BF%AB%E7%85%A7" tabindex="-1">V8 快照 <a class="header-anchor" href="#v8-%E5%BF%AB%E7%85%A7" aria-hidden="true">#</a></h2>
+<p>Lightpanda 使用 V8 快照来显著减少启动时间。快照会序列化初始的 JavaScript 堆状态，使其无需在每次启动时重新构建。</p>
+<h3 id="%E5%BF%AB%E7%85%A7%E7%9A%84%E5%B7%A5%E4%BD%9C%E5%8E%9F%E7%90%86" tabindex="-1">快照的工作原理 <a class="header-anchor" href="#%E5%BF%AB%E7%85%A7%E7%9A%84%E5%B7%A5%E4%BD%9C%E5%8E%9F%E7%90%86" aria-hidden="true">#</a></h3>
+<p>默认情况下，Lightpanda 在启动时于运行期间创建 V8 快照。对于生产环境或性能基准测试，你应该预先生成快照并将其嵌入到二进制文件中。</p>
+<h3 id="%E7%94%9F%E6%88%90%E5%BF%AB%E7%85%A7" tabindex="-1">生成快照 <a class="header-anchor" href="#%E7%94%9F%E6%88%90%E5%BF%AB%E7%85%A7" aria-hidden="true">#</a></h3>
+<pre><code class="language-bash">zig build snapshot_creator -- src/snapshot.bin
+</code></pre>
+<p>这会生成一个包含序列化 V8 堆的 <code>snapshot.bin</code> 文件。</p>
+<h3 id="%E4%BD%BF%E7%94%A8%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%BF%AB%E7%85%A7%E6%9E%84%E5%BB%BA" tabindex="-1">使用嵌入式快照构建 <a class="header-anchor" href="#%E4%BD%BF%E7%94%A8%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%BF%AB%E7%85%A7%E6%9E%84%E5%BB%BA" aria-hidden="true">#</a></h3>
+<pre><code class="language-bash">zig build -Dsnapshot_path=../../snapshot.bin
+</code></pre>
+<p><code>Makefile</code> 自动化了这个两步流程。当你运行 <code>make build</code> 时，它会先在 <code>ReleaseFast</code> 模式下生成快照，然后使用嵌入的快照编译浏览器。</p>
+<hr>
+<h2 id="%E5%8E%9F%E7%94%9F%E4%BE%9D%E8%B5%96" tabindex="-1">原生依赖 <a class="header-anchor" href="#%E5%8E%9F%E7%94%9F%E4%BE%9D%E8%B5%96" aria-hidden="true">#</a></h2>
+<p>Lightpanda 链接了多个原生库，全部通过 Zig 构建系统的 <code>build.zig.zon</code> 依赖声明来管理。你无需手动安装这些库；构建系统会自动获取并编译它们。</p>
+<h3 id="v8%EF%BC%88javascript-%E5%BC%95%E6%93%8E%EF%BC%89" tabindex="-1">V8（JavaScript 引擎）<a class="header-anchor" href="#v8%EF%BC%88javascript-%E5%BC%95%E6%93%8E%EF%BC%89" aria-hidden="true">#</a></h3>
+<p>V8 引擎由 <a href="https://github.com/lightpanda-io/zig-v8-fork">zig-v8-fork</a> 提供，这是一个兼容 Zig 的 V8 绑定分支。V8 编译是构建过程中最耗时的部分，首次构建可能需要 10-30 分钟。编译产物会缓存在 <code>.lp-cache/</code> 中，供后续构建使用。</p>
+<p>如果你有预构建的 <code>libc_v8.a</code>，可以完全跳过 V8 编译：</p>
+<pre><code class="language-bash">zig build -Dprebuilt_v8_path=/path/to/libc_v8.a
+</code></pre>
+<h3 id="html5ever%EF%BC%88html-%E8%A7%A3%E6%9E%90%E5%99%A8%EF%BC%89" tabindex="-1">html5ever（HTML 解析器）<a class="header-anchor" href="#html5ever%EF%BC%88html-%E8%A7%A3%E6%9E%90%E5%99%A8%EF%BC%89" aria-hidden="true">#</a></h3>
+<p>HTML 解析器使用 Rust 的 <a href="https://github.com/servo/html5ever">html5ever</a>，通过 Cargo 构建。Zig 构建系统会自动调用 <code>cargo build</code> 来编译 <code>litefetch_html5ever</code> 静态库。这就是为什么 Rust 是必需的前置依赖。</p>
+<h3 id="libcurl%EF%BC%88http-%E5%AE%A2%E6%88%B7%E7%AB%AF%EF%BC%89" tabindex="-1">libcurl（HTTP 客户端）<a class="header-anchor" href="#libcurl%EF%BC%88http-%E5%AE%A2%E6%88%B7%E7%AB%AF%EF%BC%89" aria-hidden="true">#</a></h3>
+<p>libcurl 连同其依赖一起从源码构建：</p>
+<ul>
+<li><strong>zlib</strong> — 压缩</li>
+<li><strong>Brotli</strong> — Brotli 压缩支持</li>
+<li><strong>nghttp2</strong> — HTTP/2 协议支持</li>
+<li><strong>BoringSSL</strong> — TLS（兼容 OpenSSL）</li>
+</ul>
+<p>在 macOS 上，构建还会链接 <code>CoreFoundation</code> 和 <code>SystemConfiguration</code> 框架以支持代理。</p>
+<h3 id="%E4%BE%9D%E8%B5%96%E7%89%88%E6%9C%AC" tabindex="-1">依赖版本 <a class="header-anchor" href="#%E4%BE%9D%E8%B5%96%E7%89%88%E6%9C%AC" aria-hidden="true">#</a></h3>
+<p>当前依赖版本（来自 <code>build.zig.zon</code>）：</p>
+<table>
+<thead>
+<tr>
+<th>库</th>
+<th>版本</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>curl</td>
+<td>8.18.0</td>
+</tr>
+<tr>
+<td>zlib</td>
+<td>1.3.2</td>
+</tr>
+<tr>
+<td>Brotli</td>
+<td>1.2.0</td>
+</tr>
+<tr>
+<td>nghttp2</td>
+<td>1.68.0</td>
+</tr>
+<tr>
+<td>BoringSSL</td>
+<td>latest (git)</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="%E8%BF%90%E8%A1%8C%E6%B5%8F%E8%A7%88%E5%99%A8" tabindex="-1">运行浏览器 <a class="header-anchor" href="#%E8%BF%90%E8%A1%8C%E6%B5%8F%E8%A7%88%E5%99%A8" aria-hidden="true">#</a></h2>
+<p>构建完成后，你可以直接运行 Lightpanda：</p>
+<pre><code class="language-bash"># 从构建输出运行
+./zig-out/bin/lightpanda serve --host 127.0.0.1 --port 9222
+
+# 或一步构建并运行
+zig build run -- serve --host 127.0.0.1 --port 9222
+</code></pre>
+<p>对于需要额外日志的调试构建：</p>
+<pre><code class="language-bash">make run-debug
+</code></pre>
+<hr>
+<h2 id="%E4%BB%A3%E7%A0%81%E6%A0%BC%E5%BC%8F%E5%8C%96" tabindex="-1">代码格式化 <a class="header-anchor" href="#%E4%BB%A3%E7%A0%81%E6%A0%BC%E5%BC%8F%E5%8C%96" aria-hidden="true">#</a></h2>
+<p>Zig 构建系统包含格式检查步骤。默认情况下，<code>zig build</code> 会验证所有源文件是否遵循标准的 Zig 格式：</p>
+<pre><code class="language-bash"># 仅检查格式而不构建
+zig build fmt
+
+# 自动格式化所有源文件
+zig fmt src/ build.zig build.zig.zon
+</code></pre>
+<p>格式检查在构建过程中自动执行。如果有文件格式不正确，构建将因格式错误而失败。</p>
+<hr>
+<h2 id="%E6%9E%84%E5%BB%BA%E4%BA%A7%E7%89%A9" tabindex="-1">构建产物 <a class="header-anchor" href="#%E6%9E%84%E5%BB%BA%E4%BA%A7%E7%89%A9" aria-hidden="true">#</a></h2>
+<p>成功构建后，输出按以下方式组织：</p>
+<pre><code>browser/
+├── zig-out/
+│   └── bin/
+│       ├── lightpanda                    # 主浏览器二进制文件
+│       └── lightpanda-snapshot-creator   # 快照生成工具
+├── .lp-cache/                            # 缓存的 V8 构建产物
+└── src/snapshot.bin                      # 生成的 V8 快照（如果已创建）
+</code></pre>
+<p><code>zig-out/</code> 目录是标准的 Zig 输出目录。<code>.lp-cache/</code> 目录包含缓存的 V8 编译产物，如果你需要全新的 V8 重新构建，可以安全删除。</p>
+<hr>
+<h2 id="%E6%95%85%E9%9A%9C%E6%8E%92%E9%99%A4" tabindex="-1">故障排除 <a class="header-anchor" href="#%E6%95%85%E9%9A%9C%E6%8E%92%E9%99%A4" aria-hidden="true">#</a></h2>
+<h3 id="v8-%E6%9E%84%E5%BB%BA%E5%A4%B1%E8%B4%A5" tabindex="-1">V8 构建失败 <a class="header-anchor" href="#v8-%E6%9E%84%E5%BB%BA%E5%A4%B1%E8%B4%A5" aria-hidden="true">#</a></h3>
+<p>V8 编译需要大量内存（建议 4GB 以上）。如果构建被 OOM Killer 终止，请尝试关闭其他应用程序或增加可用内存。V8 构建在 Linux 上还需要 <code>clang</code> — 请确保已安装。</p>
+<h3 id="html5ever-%2F-cargo-%E9%94%99%E8%AF%AF" tabindex="-1">html5ever / Cargo 错误 <a class="header-anchor" href="#html5ever-%2F-cargo-%E9%94%99%E8%AF%AF" aria-hidden="true">#</a></h3>
+<p>确保已安装 Rust 且 <code>cargo</code> 在你的 PATH 中。html5ever 构建需要 Rust stable 工具链：</p>
+<pre><code class="language-bash">rustup default stable
+rustup update
+</code></pre>
+<h3 id="zig-%E7%89%88%E6%9C%AC%E4%B8%8D%E5%8C%B9%E9%85%8D" tabindex="-1">Zig 版本不匹配 <a class="header-anchor" href="#zig-%E7%89%88%E6%9C%AC%E4%B8%8D%E5%8C%B9%E9%85%8D" aria-hidden="true">#</a></h3>
+<p>Lightpanda 需要精确的 Zig <strong>0.15.2</strong> 版本。使用以下命令检查你的版本：</p>
+<pre><code class="language-bash">zig version
+</code></pre>
+<p>如果你的版本不同，请从 <a href="https://ziglang.org/download/">ziglang.org/download</a> 下载正确的版本。Nix 开发环境会自动提供正确的版本。</p>
+<h3 id="macos-%E9%93%BE%E6%8E%A5%E5%99%A8%E9%97%AE%E9%A2%98" tabindex="-1">macOS 链接器问题 <a class="header-anchor" href="#macos-%E9%93%BE%E6%8E%A5%E5%99%A8%E9%97%AE%E9%A2%98" aria-hidden="true">#</a></h3>
+<p>如果你在 macOS 上遇到与框架相关的链接器错误，请确保 Xcode 命令行工具是最新的：</p>
+<pre><code class="language-bash">sudo xcode-select --switch /Applications/Xcode.app
+</code></pre>
+<h3 id="%E5%85%A8%E6%96%B0%E9%87%8D%E5%BB%BA" tabindex="-1">全新重建 <a class="header-anchor" href="#%E5%85%A8%E6%96%B0%E9%87%8D%E5%BB%BA" aria-hidden="true">#</a></h3>
+<p>要执行完全干净的重新构建：</p>
+<pre><code class="language-bash">rm -rf zig-out zig-cache .lp-cache
+zig build
+</code></pre>
+<hr>
+<h2 id="%E5%BC%80%E5%8F%91%E5%B7%A5%E4%BD%9C%E6%B5%81" tabindex="-1">开发工作流 <a class="header-anchor" href="#%E5%BC%80%E5%8F%91%E5%B7%A5%E4%BD%9C%E6%B5%81" aria-hidden="true">#</a></h2>
+<p>典型的开发周期如下：</p>
+<ol>
+<li>在 <code>src/</code> 中修改代码</li>
+<li>以 debug 模式构建：<code>make build-dev</code> 或 <code>zig build</code></li>
+<li>运行单元测试：<code>make test</code></li>
+<li>手动测试：<code>zig build run -- serve --host 127.0.0.1 --port 9222</code></li>
+<li>检查格式：<code>zig build fmt</code></li>
+</ol>
+<p>对于性能测试，请使用 Release 构建：</p>
+<pre><code class="language-bash">make build
+./zig-out/bin/lightpanda serve --host 127.0.0.1 --port 9222
+</code></pre>
+<hr>
+<h2 id="%E7%9B%B8%E5%85%B3%E4%B8%BB%E9%A2%98" tabindex="-1">相关主题 <a class="header-anchor" href="#%E7%9B%B8%E5%85%B3%E4%B8%BB%E9%A2%98" aria-hidden="true">#</a></h2>
+<ul>
+<li><a href="overview.html">概述</a> — Lightpanda 浏览器介绍</li>
+<li><a href="testing.html">测试</a> — 运行单元测试、端到端测试和 Web 平台测试</li>
+<li><a href="architecture.html">架构</a> — 了解代码库结构</li>
+<li><a href="contributing.html">贡献</a> — 如何提交拉取请求</li>
+</ul>
+</main>
+    <nav data-ds="toc"><div class="toc-title">本页目录</div><ul><li><a href="#%E7%B3%BB%E7%BB%9F%E8%A6%81%E6%B1%82">系统要求</a></li><li><a href="#%E5%B9%B3%E5%8F%B0%E7%89%B9%E5%AE%9A%E4%BE%9D%E8%B5%96">平台特定依赖</a></li><ul><li><a href="#debian-%2F-ubuntu">Debian / Ubuntu</a></li><li><a href="#macos">macOS</a></li><li><a href="#nix">Nix</a></li></ul><li><a href="#%E5%85%8B%E9%9A%86%E4%BB%A3%E7%A0%81%E4%BB%93%E5%BA%93">克隆代码仓库</a></li><li><a href="#%E6%9E%84%E5%BB%BA%E5%91%BD%E4%BB%A4">构建命令</a></li><ul><li><a href="#%E4%BD%BF%E7%94%A8-make-%E5%BF%AB%E9%80%9F%E6%9E%84%E5%BB%BA">使用 Make 快速构建</a></li><li><a href="#%E7%9B%B4%E6%8E%A5%E4%BD%BF%E7%94%A8-zig">直接使用 Zig</a></li><li><a href="#%E6%9E%84%E5%BB%BA%E9%80%89%E9%A1%B9">构建选项</a></li></ul><li><a href="#v8-%E5%BF%AB%E7%85%A7">V8 快照</a></li><ul><li><a href="#%E5%BF%AB%E7%85%A7%E7%9A%84%E5%B7%A5%E4%BD%9C%E5%8E%9F%E7%90%86">快照的工作原理</a></li><li><a href="#%E7%94%9F%E6%88%90%E5%BF%AB%E7%85%A7">生成快照</a></li><li><a href="#%E4%BD%BF%E7%94%A8%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%BF%AB%E7%85%A7%E6%9E%84%E5%BB%BA">使用嵌入式快照构建</a></li></ul><li><a href="#%E5%8E%9F%E7%94%9F%E4%BE%9D%E8%B5%96">原生依赖</a></li><ul><li><a href="#v8%EF%BC%88javascript-%E5%BC%95%E6%93%8E%EF%BC%89">V8（JavaScript 引擎）</a></li><li><a href="#html5ever%EF%BC%88html-%E8%A7%A3%E6%9E%90%E5%99%A8%EF%BC%89">html5ever（HTML 解析器）</a></li><li><a href="#libcurl%EF%BC%88http-%E5%AE%A2%E6%88%B7%E7%AB%AF%EF%BC%89">libcurl（HTTP 客户端）</a></li><li><a href="#%E4%BE%9D%E8%B5%96%E7%89%88%E6%9C%AC">依赖版本</a></li></ul><li><a href="#%E8%BF%90%E8%A1%8C%E6%B5%8F%E8%A7%88%E5%99%A8">运行浏览器</a></li><li><a href="#%E4%BB%A3%E7%A0%81%E6%A0%BC%E5%BC%8F%E5%8C%96">代码格式化</a></li><li><a href="#%E6%9E%84%E5%BB%BA%E4%BA%A7%E7%89%A9">构建产物</a></li><li><a href="#%E6%95%85%E9%9A%9C%E6%8E%92%E9%99%A4">故障排除</a></li><ul><li><a href="#v8-%E6%9E%84%E5%BB%BA%E5%A4%B1%E8%B4%A5">V8 构建失败</a></li><li><a href="#html5ever-%2F-cargo-%E9%94%99%E8%AF%AF">html5ever / Cargo 错误</a></li><li><a href="#zig-%E7%89%88%E6%9C%AC%E4%B8%8D%E5%8C%B9%E9%85%8D">Zig 版本不匹配</a></li><li><a href="#macos-%E9%93%BE%E6%8E%A5%E5%99%A8%E9%97%AE%E9%A2%98">macOS 链接器问题</a></li><li><a href="#%E5%85%A8%E6%96%B0%E9%87%8D%E5%BB%BA">全新重建</a></li></ul><li><a href="#%E5%BC%80%E5%8F%91%E5%B7%A5%E4%BD%9C%E6%B5%81">开发工作流</a></li><li><a href="#%E7%9B%B8%E5%85%B3%E4%B8%BB%E9%A2%98">相关主题</a></li></ul></nav>
+  </div>
+  <footer data-ds="footer">
+    <a href="https://docsmith.aigne.io/" target="_blank" rel="noopener noreferrer" class="docsmith-badge">
+      <svg class="docsmith-badge-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+        <polyline points="14 2 14 8 20 8"></polyline>
+        <line x1="16" y1="13" x2="8" y2="13"></line>
+        <line x1="16" y1="17" x2="8" y2="17"></line>
+        <polyline points="10 9 9 9 8 9"></polyline>
+      </svg>
+      <span>Built with <strong>AIGNE DocSmith</strong></span>
+    </a>
+  </footer>
+
+</body>
+</html>

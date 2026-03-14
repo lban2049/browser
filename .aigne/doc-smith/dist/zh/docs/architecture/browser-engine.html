@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>浏览器引擎 - lightpanda-browser</title>
+  <meta name="description" content="">
+  <meta property="og:title" content="浏览器引擎">
+  <meta property="og:description" content="">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="../../../assets/docsmith.css">
+  <link rel="stylesheet" href="../../../assets/theme.css">
+  <script src="../../../assets/nav.js" defer></script>
+  <script>
+    // Initialize theme from localStorage or system preference
+    (function() {
+      const stored = localStorage.getItem('docsmith-theme');
+      if (stored) {
+        document.documentElement.setAttribute('data-theme', stored);
+      } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    })();
+
+    function toggleTheme() {
+      const html = document.documentElement;
+      const current = html.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      localStorage.setItem('docsmith-theme', next);
+    }
+  </script>
+</head>
+<body data-ds-path="/architecture/browser-engine">
+  <header data-ds="header">
+    <a href="/zh/index.html" class="site-title">lightpanda-browser</a>
+    <div class="header-controls">
+
+    <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
+      <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="5"></circle>
+        <line x1="12" y1="1" x2="12" y2="3"></line>
+        <line x1="12" y1="21" x2="12" y2="23"></line>
+        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+        <line x1="1" y1="12" x2="3" y2="12"></line>
+        <line x1="21" y1="12" x2="23" y2="12"></line>
+        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+      </svg>
+      <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+      </svg>
+    </button>
+    </div>
+  </header>
+  <div data-ds="layout">
+    <aside data-ds="sidebar"><!-- nav.js 渲染 --></aside>
+    <main data-ds="content"><h1 id="%E6%B5%8F%E8%A7%88%E5%99%A8%E5%BC%95%E6%93%8E" tabindex="-1">浏览器引擎 <a class="header-anchor" href="#%E6%B5%8F%E8%A7%88%E5%99%A8%E5%BC%95%E6%93%8E" aria-hidden="true">#</a></h1>
+<p>浏览器引擎是 Lightpanda 的核心，负责解析 HTML、管理 DOM、执行 JavaScript 以及编排页面生命周期。它使用 Zig 语言编写，以实现最高性能和最低内存开销，非常适合需要快速连续处理数千个页面的无头自动化工作负载。</p>
+<blockquote>
+<p><strong>前置知识</strong>：熟悉浏览器内部原理（DOM、JavaScript 运行时）会有所帮助，但并非必需。如需了解引擎在整体系统中的定位，请参阅<a href="../architecture.html">架构</a>。</p>
+</blockquote>
+<hr>
+<h2 id="%E7%BB%84%E4%BB%B6%E6%A6%82%E8%A7%88" tabindex="-1">组件概览 <a class="header-anchor" href="#%E7%BB%84%E4%BB%B6%E6%A6%82%E8%A7%88" aria-hidden="true">#</a></h2>
+<p>浏览器引擎围绕四个主要子系统组织：</p>
+<table>
+<thead>
+<tr>
+<th>子系统</th>
+<th>源文件</th>
+<th>职责</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Browser</strong></td>
+<td><code>Browser.zig</code></td>
+<td>顶层实例，拥有 JS 环境和 HTTP 客户端</td>
+</tr>
+<tr>
+<td><strong>Session</strong></td>
+<td><code>Session.zig</code></td>
+<td>管理页面生命周期、Cookie 容器、导航历史和存储</td>
+</tr>
+<tr>
+<td><strong>Page</strong></td>
+<td><code>Page.zig</code></td>
+<td>DOM 树、脚本执行上下文、事件循环和 Web API 绑定</td>
+</tr>
+<tr>
+<td><strong>ScriptManager</strong></td>
+<td><code>ScriptManager.zig</code></td>
+<td>加载、排序和执行内联、异步、延迟和模块脚本</td>
+</tr>
+</tbody>
+</table>
+<p>其他子系统负责 HTML 解析（<code>parser/</code>）、JavaScript 集成（<code>js/</code>）、DOM 事件（<code>EventManager.zig</code>）以及高效内存分配（<code>Factory.zig</code>）。</p>
+<hr>
+<h2 id="browser-%E5%AE%9E%E4%BE%8B" tabindex="-1">Browser 实例 <a class="header-anchor" href="#browser-%E5%AE%9E%E4%BE%8B" aria-hidden="true">#</a></h2>
+<p><code>Browser</code> 是入口点。每个实例会创建一个隔离的 JavaScript 环境（V8 isolate），并持有对共享 HTTP 客户端的引用。你可以创建多个 <code>Browser</code> 实例，但每个实例同一时间只能有一个活跃的会话。</p>
+<pre><code class="language-zig">// Simplified initialization
+var browser = try Browser.init(app, .{
+    .http_client = http_client,
+});
+defer browser.deinit();
+</code></pre>
+<p><code>Browser</code> 上的主要操作：</p>
+<ul>
+<li><strong><code>newSession</code></strong> – 关闭任何现有会话并创建一个新的会话，包含独立的页面、Cookie 容器和导航历史。</li>
+<li><strong><code>closeSession</code></strong> – 销毁当前会话，并向 V8 发出关键内存压力通知，使其回收垃圾收集的内存。</li>
+<li><strong><code>runMicrotasks</code> / <code>runMacrotasks</code></strong> – 驱动 JavaScript 事件循环。微任务（Promise）先执行，然后是宏任务（定时器、I/O 回调）。这种两阶段方式遵循浏览器事件循环规范。</li>
+</ul>
+<hr>
+<h2 id="%E4%BC%9A%E8%AF%9D%E7%AE%A1%E7%90%86" tabindex="-1">会话管理 <a class="header-anchor" href="#%E4%BC%9A%E8%AF%9D%E7%AE%A1%E7%90%86" aria-hidden="true">#</a></h2>
+<p><code>Session</code> 表示一个在导航间持续存在的浏览上下文。它拥有：</p>
+<ul>
+<li><strong>Cookie 容器</strong> – 在会话内的页面加载之间存储 Cookie。</li>
+<li><strong>导航历史</strong> – 通过 <code>History</code> Web API 跟踪前进/后退导航。</li>
+<li><strong>存储仓库</strong> – 实现 <code>localStorage</code> 和 <code>sessionStorage</code>。</li>
+<li><strong>源映射</strong> – 为 V8 启用同源上下文共享（使来自同一来源的脚本按预期共享全局对象）。</li>
+</ul>
+<p>会话还管理 <code>Factory</code>，这是一个基于 Arena 的分配器，用于当前页面上的所有 DOM 节点和 Web API 对象。当根页面导航时，Factory 会被重置，通过单次操作释放上一页面的所有内存，而不是逐个释放对象。</p>
+<pre><code class="language-zig">// Create a new session with a notification callback
+var session = try browser.newSession(&amp;notification);
+
+// The session manages a single root page at a time
+// Navigating replaces the page but preserves cookies and history
+</code></pre>
+<hr>
+<h2 id="%E9%A1%B5%E9%9D%A2%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F" tabindex="-1">页面生命周期 <a class="header-anchor" href="#%E9%A1%B5%E9%9D%A2%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F" aria-hidden="true">#</a></h2>
+<p><code>Page</code> 是最大且最复杂的组件。它表示一个已加载的文档，并管理：</p>
+<h3 id="dom-%E6%A0%91" tabindex="-1">DOM 树 <a class="header-anchor" href="#dom-%E6%A0%91" aria-hidden="true">#</a></h3>
+<p>页面拥有完整的 DOM 树，包括：</p>
+<ul>
+<li><strong>元素查找</strong> – 惰性创建的 style、classList 和 dataset 对象，每个元素节省 24 字节，仅在 JavaScript 实际访问这些属性时才分配。</li>
+<li><strong>属性标识</strong> – 通过查找表确保对同一 DOM 属性的重复访问返回相同的 <code>Attribute</code> 对象，在不增加每个元素内存开销的情况下保持标识语义。</li>
+<li><strong>Shadow DOM</strong> – Shadow root 存储在单独的查找表中，支持 Web Components。</li>
+<li><strong>自定义元素</strong> – 跟踪未定义的自定义元素，并在其定义注册时进行升级。</li>
+</ul>
+<h3 id="%E4%BA%8B%E4%BB%B6%E7%B3%BB%E7%BB%9F" tabindex="-1">事件系统 <a class="header-anchor" href="#%E4%BA%8B%E4%BB%B6%E7%B3%BB%E7%BB%9F" aria-hidden="true">#</a></h3>
+<p>页面集成了多种观察者模式：</p>
+<ul>
+<li><strong>MutationObserver</strong> – 监控 DOM 变更并批量投递，以避免重入问题。</li>
+<li><strong>IntersectionObserver</strong> – 跟踪元素可见性（对爬虫中的懒加载检测很有用）。</li>
+<li><strong>PerformanceObserver</strong> – 收集性能计时条目。</li>
+<li><strong>Live Ranges</strong> – 维护活跃的 Range 对象，在 DOM 变更时自动更新。</li>
+</ul>
+<h3 id="%E5%8A%A0%E8%BD%BD%E7%8A%B6%E6%80%81%E6%9C%BA" tabindex="-1">加载状态机 <a class="header-anchor" href="#%E5%8A%A0%E8%BD%BD%E7%8A%B6%E6%80%81%E6%9C%BA" aria-hidden="true">#</a></h3>
+<p>页面加载遵循以下阶段的状态机：</p>
+<ol>
+<li><strong><code>pre</code></strong> – 解析开始前的初始状态。</li>
+<li><strong>解析中</strong> – HTML 被送入解析器；DOM 树被增量构建。</li>
+<li><strong>脚本待处理</strong> – 延迟脚本和异步脚本按正确顺序加载和执行。</li>
+<li><strong><code>complete</code></strong> – 所有脚本、iframe 和资源已加载；<code>load</code> 事件在 <code>window</code> 上触发。</li>
+</ol>
+<p><code>_pending_loads</code> 计数器跟踪未完成的加载（脚本、iframe），仅在计数归零时触发 <code>load</code> 事件。</p>
+<h3 id="%E5%AF%BC%E8%88%AA" tabindex="-1">导航 <a class="header-anchor" href="#%E5%AF%BC%E8%88%AA" aria-hidden="true">#</a></h3>
+<p>导航可以通过以下方式触发：</p>
+<ul>
+<li><strong>CDP 命令</strong> – 从 CDP 层调用 <code>Page.navigate</code>。</li>
+<li><strong>JavaScript</strong> – <code>window.location</code> 的变更会被排入队列，并在下一个 tick 执行，以避免脚本执行期间的重入。</li>
+<li><strong>链接点击</strong> – 通过事件系统处理。</li>
+</ul>
+<pre><code class="language-javascript">// From a CDP client perspective (Puppeteer example)
+await page.goto('https://example.com');
+await page.waitForSelector('#content');
+const html = await page.content();
+</code></pre>
+<hr>
+<h2 id="html-%E8%A7%A3%E6%9E%90%E5%99%A8" tabindex="-1">HTML 解析器 <a class="header-anchor" href="#html-%E8%A7%A3%E6%9E%90%E5%99%A8" aria-hidden="true">#</a></h2>
+<p>Lightpanda 使用 <strong>html5ever</strong>，这是一个基于 Rust 的 HTML 解析器，实现了 WHATWG HTML 规范。Zig 集成通过 C FFI 层和回调驱动架构来工作。</p>
+<h3 id="%E8%A7%A3%E6%9E%90%E6%A8%A1%E5%BC%8F" tabindex="-1">解析模式 <a class="header-anchor" href="#%E8%A7%A3%E6%9E%90%E6%A8%A1%E5%BC%8F" aria-hidden="true">#</a></h3>
+<p>解析器支持三种模式：</p>
+<table>
+<thead>
+<tr>
+<th>模式</th>
+<th>使用场景</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>document</code></td>
+<td>从网络响应进行完整页面解析</td>
+</tr>
+<tr>
+<td><code>fragment</code></td>
+<td><code>innerHTML</code> 和 <code>insertAdjacentHTML</code> 操作</td>
+</tr>
+<tr>
+<td><code>document_write</code></td>
+<td>通过 <code>document.write()</code> 进行动态内容注入</td>
+</tr>
+</tbody>
+</table>
+<h3 id="%E5%9B%9E%E8%B0%83%E6%9E%B6%E6%9E%84" tabindex="-1">回调架构 <a class="header-anchor" href="#%E5%9B%9E%E8%B0%83%E6%9E%B6%E6%9E%84" aria-hidden="true">#</a></h3>
+<p>html5ever 不返回树结构，而是为每个 DOM 操作回调 Zig：</p>
+<ul>
+<li><strong><code>createElement</code></strong> – 在页面的 Arena 中分配一个新元素。</li>
+<li><strong><code>append</code></strong> – 将节点或文本附加到其父节点。</li>
+<li><strong><code>pop</code></strong> – 表示一个元素的子节点已完成。</li>
+<li><strong><code>removeFromParent</code></strong> / <strong><code>reparentChildren</code></strong> – 处理 HTML 解析算法所需的树变更（例如寄养、领养代理）。</li>
+</ul>
+<h3 id="%E6%B5%81%E5%BC%8F%E8%A7%A3%E6%9E%90%E5%99%A8" tabindex="-1">流式解析器 <a class="header-anchor" href="#%E6%B5%81%E5%BC%8F%E8%A7%A3%E6%9E%90%E5%99%A8" aria-hidden="true">#</a></h3>
+<p>对于大型文档，流式 API 允许分块送入 HTML：</p>
+<pre><code class="language-zig">// Streaming parse API (simplified)
+const parser = html5ever_streaming_parser_create(doc, ctx, /* callbacks... */);
+html5ever_streaming_parser_feed(parser, chunk.ptr, chunk.len);
+// ... feed more chunks ...
+html5ever_streaming_parser_finish(parser);
+</code></pre>
+<p>这对于 HTML 尚未完全可用的网络流式传输页面非常重要。</p>
+<hr>
+<h2 id="javascript-%E9%9B%86%E6%88%90" tabindex="-1">JavaScript 集成 <a class="header-anchor" href="#javascript-%E9%9B%86%E6%88%90" aria-hidden="true">#</a></h2>
+<p>Lightpanda 嵌入 <strong>V8</strong> 作为其 JavaScript 引擎。集成分为多个层次：</p>
+<h3 id="env%EF%BC%88v8-isolate%EF%BC%89" tabindex="-1">Env（V8 Isolate） <a class="header-anchor" href="#env%EF%BC%88v8-isolate%EF%BC%89" aria-hidden="true">#</a></h3>
+<p><code>Env</code> 封装了一个 V8 isolate——一个用于执行 JavaScript 的隔离沙箱。它管理：</p>
+<ul>
+<li><strong>Isolate 生命周期</strong> – V8 isolate 的创建、配置和销毁。</li>
+<li><strong>上下文池</strong> – 最多 64 个执行上下文（每个 frame/origin 组合一个）。</li>
+<li><strong>源共享</strong> – 来自同一来源的 V8 上下文共享全局对象，与标准浏览器行为一致。</li>
+<li><strong>任务调度</strong> – 微任务、宏任务和空闲任务通过 V8 的平台 API 进行路由。</li>
+</ul>
+<h3 id="bridge%EF%BC%88zig-%E5%88%B0-v8-%E7%BB%91%E5%AE%9A%EF%BC%89" tabindex="-1">Bridge（Zig 到 V8 绑定） <a class="header-anchor" href="#bridge%EF%BC%88zig-%E5%88%B0-v8-%E7%BB%91%E5%AE%9A%EF%BC%89" aria-hidden="true">#</a></h3>
+<p><code>bridge.zig</code> 模块提供了 Zig 结构体与 V8 JavaScript 对象之间的自动绑定生成。这意味着使用 Zig 实现的 Web API 会自动暴露给 JavaScript，无需手动编写绑定代码。</p>
+<pre><code class="language-zig">// The bridge maps Zig types to JavaScript automatically
+// A Zig struct like Window becomes accessible as window.* in JS
+pub fn Bridge(comptime T: type) type {
+    return bridge.Builder(T);
+}
+</code></pre>
+<h3 id="%E5%85%B3%E9%94%AE-js-%E7%B1%BB%E5%9E%8B" tabindex="-1">关键 JS 类型 <a class="header-anchor" href="#%E5%85%B3%E9%94%AE-js-%E7%B1%BB%E5%9E%8B" aria-hidden="true">#</a></h3>
+<p><code>js/</code> 目录提供了 V8 类型的 Zig 封装：</p>
+<table>
+<thead>
+<tr>
+<th>Zig 类型</th>
+<th>V8 对应类型</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Value</code></td>
+<td><code>v8::Value</code></td>
+<td>所有 JS 值的基类型</td>
+</tr>
+<tr>
+<td><code>Object</code></td>
+<td><code>v8::Object</code></td>
+<td>JavaScript 对象</td>
+</tr>
+<tr>
+<td><code>Function</code></td>
+<td><code>v8::Function</code></td>
+<td>可调用函数</td>
+</tr>
+<tr>
+<td><code>Promise</code></td>
+<td><code>v8::Promise</code></td>
+<td>异步结果</td>
+</tr>
+<tr>
+<td><code>Module</code></td>
+<td><code>v8::Module</code></td>
+<td>ES 模块</td>
+</tr>
+<tr>
+<td><code>Context</code></td>
+<td><code>v8::Context</code></td>
+<td>具有独立全局对象的执行上下文</td>
+</tr>
+<tr>
+<td><code>TryCatch</code></td>
+<td><code>v8::TryCatch</code></td>
+<td>异常处理作用域</td>
+</tr>
+</tbody>
+</table>
+<h3 id="%E5%BF%AB%E7%85%A7%E6%94%AF%E6%8C%81" tabindex="-1">快照支持 <a class="header-anchor" href="#%E5%BF%AB%E7%85%A7%E6%94%AF%E6%8C%81" aria-hidden="true">#</a></h3>
+<p>V8 快照允许序列化 JavaScript 堆的已初始化状态。Lightpanda 利用此功能通过加载预构建的 Web API 绑定快照来加速启动，而不是为每个页面重新初始化。</p>
+<hr>
+<h2 id="%E8%84%9A%E6%9C%AC%E7%AE%A1%E7%90%86%E5%99%A8" tabindex="-1">脚本管理器 <a class="header-anchor" href="#%E8%84%9A%E6%9C%AC%E7%AE%A1%E7%90%86%E5%99%A8" aria-hidden="true">#</a></h2>
+<p><code>ScriptManager</code> 负责脚本加载和执行排序，这是浏览器引擎中最复杂的部分之一。它管理四类脚本：</p>
+<h3 id="%E8%84%9A%E6%9C%AC%E7%B1%BB%E5%88%AB" tabindex="-1">脚本类别 <a class="header-anchor" href="#%E8%84%9A%E6%9C%AC%E7%B1%BB%E5%88%AB" aria-hidden="true">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>类别</th>
+<th>HTML 示例</th>
+<th>行为</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>内联</strong></td>
+<td><code>&lt;script&gt;code&lt;/script&gt;</code></td>
+<td>立即执行，阻塞解析</td>
+</tr>
+<tr>
+<td><strong>异步</strong></td>
+<td><code>&lt;script async src=&quot;...&quot;&gt;</code></td>
+<td>并行下载，就绪时执行（顺序不定）</td>
+</tr>
+<tr>
+<td><strong>延迟</strong></td>
+<td><code>&lt;script defer src=&quot;...&quot;&gt;</code></td>
+<td>并行下载，解析后按顺序执行</td>
+</tr>
+<tr>
+<td><strong>模块</strong></td>
+<td><code>&lt;script type=&quot;module&quot;&gt;</code></td>
+<td>默认按延迟方式处理，支持 <code>import</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="import-maps" tabindex="-1">Import Maps <a class="header-anchor" href="#import-maps" aria-hidden="true">#</a></h3>
+<p>ScriptManager 支持 <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/script/type/importmap">import maps</a>，允许重映射模块标识符：</p>
+<pre><code class="language-html">&lt;script type=&quot;importmap&quot;&gt;
+{
+  &quot;imports&quot;: {
+    &quot;lodash&quot;: &quot;https://cdn.example.com/lodash/4.17.21/lodash.min.js&quot;
+  }
+}
+&lt;/script&gt;
+&lt;script type=&quot;module&quot;&gt;
+import _ from &quot;lodash&quot;;  // resolved via import map
+&lt;/script&gt;
+</code></pre>
+<h3 id="%E6%A8%A1%E5%9D%97%E8%A7%A3%E6%9E%90" tabindex="-1">模块解析 <a class="header-anchor" href="#%E6%A8%A1%E5%9D%97%E8%A7%A3%E6%9E%90" aria-hidden="true">#</a></h3>
+<p>对于 ES 模块，ScriptManager 维护：</p>
+<ul>
+<li><strong><code>imported_modules</code></strong> – 按 URL 索引的已下载模块缓存。模块可能无序完成，但由 V8 按依赖顺序处理。</li>
+<li><strong><code>importmap</code></strong> – 从模块标识符到解析后 URL 的映射。</li>
+<li><strong>缓冲池</strong> – 可重用的脚本内容缓冲区，最大限度减少页面加载期间的分配。</li>
+</ul>
+<h3 id="%E5%AE%8C%E6%88%90%E8%BF%BD%E8%B8%AA" tabindex="-1">完成追踪 <a class="header-anchor" href="#%E5%AE%8C%E6%88%90%E8%BF%BD%E8%B8%AA" aria-hidden="true">#</a></h3>
+<p>ScriptManager 追踪所有脚本何时完成加载并通知页面，这是 <code>load</code> 事件触发前的必要条件。<code>page_notified_of_completion</code> 标志确保此通知仅发生一次。</p>
+<hr>
+<h2 id="web-api-%E5%AE%9E%E7%8E%B0" tabindex="-1">Web API 实现 <a class="header-anchor" href="#web-api-%E5%AE%9E%E7%8E%B0" aria-hidden="true">#</a></h2>
+<p>Lightpanda 将大量 Web API 实现为 Zig 结构体。每个结构体通过 Bridge 系统自动绑定到 JavaScript。主要 API 包括：</p>
+<h3 id="dom-api" tabindex="-1">DOM API <a class="header-anchor" href="#dom-api" aria-hidden="true">#</a></h3>
+<ul>
+<li><code>Document</code>、<code>Element</code>、<code>Node</code>、<code>ShadowRoot</code></li>
+<li><code>DOMParser</code>、<code>XMLSerializer</code></li>
+<li><code>Range</code>、<code>Selection</code>、<code>TreeWalker</code>、<code>NodeIterator</code></li>
+</ul>
+<h3 id="%E4%BA%8B%E4%BB%B6" tabindex="-1">事件 <a class="header-anchor" href="#%E4%BA%8B%E4%BB%B6" aria-hidden="true">#</a></h3>
+<ul>
+<li><code>Event</code>、<code>EventTarget</code>、<code>CustomEvent</code></li>
+<li><code>MutationObserver</code>、<code>IntersectionObserver</code>、<code>ResizeObserver</code></li>
+<li><code>KeyboardEvent</code>、<code>PageTransitionEvent</code></li>
+</ul>
+<h3 id="%E5%AF%BC%E8%88%AA%E5%92%8C%E5%8E%86%E5%8F%B2" tabindex="-1">导航和历史 <a class="header-anchor" href="#%E5%AF%BC%E8%88%AA%E5%92%8C%E5%8E%86%E5%8F%B2" aria-hidden="true">#</a></h3>
+<ul>
+<li><code>Window</code>、<code>Location</code>、<code>History</code>、<code>Navigator</code></li>
+<li><code>URL</code>、<code>URLSearchParams</code></li>
+</ul>
+<h3 id="%E5%AD%98%E5%82%A8" tabindex="-1">存储 <a class="header-anchor" href="#%E5%AD%98%E5%82%A8" aria-hidden="true">#</a></h3>
+<ul>
+<li><code>localStorage</code>、<code>sessionStorage</code>、<code>Cookie</code></li>
+</ul>
+<h3 id="%E5%85%B6%E4%BB%96-api" tabindex="-1">其他 API <a class="header-anchor" href="#%E5%85%B6%E4%BB%96-api" aria-hidden="true">#</a></h3>
+<ul>
+<li><code>Console</code>、<code>Crypto</code>、<code>SubtleCrypto</code></li>
+<li><code>AbortController</code>、<code>AbortSignal</code></li>
+<li><code>Blob</code>、<code>File</code>、<code>FileReader</code>、<code>FileList</code></li>
+<li><code>Performance</code>、<code>PerformanceObserver</code></li>
+<li><code>MessageChannel</code>、<code>MessagePort</code></li>
+</ul>
+<hr>
+<h2 id="%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86" tabindex="-1">内存管理 <a class="header-anchor" href="#%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86" aria-hidden="true">#</a></h2>
+<p>Lightpanda 在整个引擎中使用基于 Arena 的分配，以实现可预测、高效的内存管理：</p>
+<h3 id="arena-%E5%B1%82%E7%BA%A7" tabindex="-1">Arena 层级 <a class="header-anchor" href="#arena-%E5%B1%82%E7%BA%A7" aria-hidden="true">#</a></h3>
+<ul>
+<li><strong>应用 Arena</strong> – 在整个应用程序生命周期内存在。</li>
+<li><strong>会话 Arena</strong> – 在浏览会话持续期间存在。</li>
+<li><strong>页面 Arena</strong> – 在单次页面加载期间存在。当页面导航或关闭时，整个 Arena 一次性释放。</li>
+<li><strong>调用 Arena</strong> – 在 JavaScript 的单次 Zig 函数调用期间存在。这是首选的 Arena，因为它的生命周期最短。</li>
+</ul>
+<h3 id="arena-%E6%B1%A0" tabindex="-1">Arena 池 <a class="header-anchor" href="#arena-%E6%B1%A0" aria-hidden="true">#</a></h3>
+<p><code>ArenaPool</code> 允许跨页面重用 Arena 分配器，以避免重复的操作系统级内存分配。在调试模式下，泄漏追踪器会验证所有借用的 Arena 是否已归还到池中。</p>
+<h3 id="%E6%83%B0%E6%80%A7%E5%88%86%E9%85%8D" tabindex="-1">惰性分配 <a class="header-anchor" href="#%E6%83%B0%E6%80%A7%E5%88%86%E9%85%8D" aria-hidden="true">#</a></h3>
+<p>许多逐元素的数据结构（style 对象、class 列表、dataset、shadow root）采用惰性分配——仅在 JavaScript 代码实际访问时才分配。这在拥有数千个元素但仅有少数通过编程方式交互的页面上可以显著节省内存。</p>
+<hr>
+<h2 id="%E7%9B%B8%E5%85%B3%E4%B8%BB%E9%A2%98" tabindex="-1">相关主题 <a class="header-anchor" href="#%E7%9B%B8%E5%85%B3%E4%B8%BB%E9%A2%98" aria-hidden="true">#</a></h2>
+<ul>
+<li><a href="../architecture.html">架构概览</a> – 所有 Lightpanda 组件的高层视图</li>
+<li><a href="../architecture/network.html">网络层</a> – HTTP 客户端、WebSocket 和代理支持</li>
+<li><a href="../architecture/cdp.html">CDP 协议</a> – 驱动引擎的 Chrome DevTools Protocol 实现</li>
+<li><a href="../building.html">从源码构建</a> – 在本地编译和开发引擎</li>
+<li><a href="../testing.html">测试</a> – 对引擎运行单元测试和 Web Platform Tests</li>
+</ul>
+</main>
+    <nav data-ds="toc"><div class="toc-title">本页内容</div><ul><li><a href="#%E7%BB%84%E4%BB%B6%E6%A6%82%E8%A7%88">组件概览</a></li><li><a href="#browser-%E5%AE%9E%E4%BE%8B">Browser 实例</a></li><li><a href="#%E4%BC%9A%E8%AF%9D%E7%AE%A1%E7%90%86">会话管理</a></li><li><a href="#%E9%A1%B5%E9%9D%A2%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F">页面生命周期</a></li><ul><li><a href="#dom-%E6%A0%91">DOM 树</a></li><li><a href="#%E4%BA%8B%E4%BB%B6%E7%B3%BB%E7%BB%9F">事件系统</a></li><li><a href="#%E5%8A%A0%E8%BD%BD%E7%8A%B6%E6%80%81%E6%9C%BA">加载状态机</a></li><li><a href="#%E5%AF%BC%E8%88%AA">导航</a></li></ul><li><a href="#html-%E8%A7%A3%E6%9E%90%E5%99%A8">HTML 解析器</a></li><ul><li><a href="#%E8%A7%A3%E6%9E%90%E6%A8%A1%E5%BC%8F">解析模式</a></li><li><a href="#%E5%9B%9E%E8%B0%83%E6%9E%B6%E6%9E%84">回调架构</a></li><li><a href="#%E6%B5%81%E5%BC%8F%E8%A7%A3%E6%9E%90%E5%99%A8">流式解析器</a></li></ul><li><a href="#javascript-%E9%9B%86%E6%88%90">JavaScript 集成</a></li><ul><li><a href="#env%EF%BC%88v8-isolate%EF%BC%89">Env（V8 Isolate）</a></li><li><a href="#bridge%EF%BC%88zig-%E5%88%B0-v8-%E7%BB%91%E5%AE%9A%EF%BC%89">Bridge（Zig 到 V8 绑定）</a></li><li><a href="#%E5%85%B3%E9%94%AE-js-%E7%B1%BB%E5%9E%8B">关键 JS 类型</a></li><li><a href="#%E5%BF%AB%E7%85%A7%E6%94%AF%E6%8C%81">快照支持</a></li></ul><li><a href="#%E8%84%9A%E6%9C%AC%E7%AE%A1%E7%90%86%E5%99%A8">脚本管理器</a></li><ul><li><a href="#%E8%84%9A%E6%9C%AC%E7%B1%BB%E5%88%AB">脚本类别</a></li><li><a href="#import-maps">Import Maps</a></li><li><a href="#%E6%A8%A1%E5%9D%97%E8%A7%A3%E6%9E%90">模块解析</a></li><li><a href="#%E5%AE%8C%E6%88%90%E8%BF%BD%E8%B8%AA">完成追踪</a></li></ul><li><a href="#web-api-%E5%AE%9E%E7%8E%B0">Web API 实现</a></li><ul><li><a href="#dom-api">DOM API</a></li><li><a href="#%E4%BA%8B%E4%BB%B6">事件</a></li><li><a href="#%E5%AF%BC%E8%88%AA%E5%92%8C%E5%8E%86%E5%8F%B2">导航和历史</a></li><li><a href="#%E5%AD%98%E5%82%A8">存储</a></li><li><a href="#%E5%85%B6%E4%BB%96-api">其他 API</a></li></ul><li><a href="#%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86">内存管理</a></li><ul><li><a href="#arena-%E5%B1%82%E7%BA%A7">Arena 层级</a></li><li><a href="#arena-%E6%B1%A0">Arena 池</a></li><li><a href="#%E6%83%B0%E6%80%A7%E5%88%86%E9%85%8D">惰性分配</a></li></ul><li><a href="#%E7%9B%B8%E5%85%B3%E4%B8%BB%E9%A2%98">相关主题</a></li></ul></nav>
+  </div>
+  <footer data-ds="footer">
+    <a href="https://docsmith.aigne.io/" target="_blank" rel="noopener noreferrer" class="docsmith-badge">
+      <svg class="docsmith-badge-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+        <polyline points="14 2 14 8 20 8"></polyline>
+        <line x1="16" y1="13" x2="8" y2="13"></line>
+        <line x1="16" y1="17" x2="8" y2="17"></line>
+        <polyline points="10 9 9 9 8 9"></polyline>
+      </svg>
+      <span>Built with <strong>AIGNE DocSmith</strong></span>
+    </a>
+  </footer>
+
+</body>
+</html>

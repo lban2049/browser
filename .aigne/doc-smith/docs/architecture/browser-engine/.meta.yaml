@@ -1,0 +1,10 @@
+kind: doc
+source: en
+default: en
+languages:
+  - en
+  - zh
+translations:
+  zh:
+    sourceHash: "8501854a2c90c00275d96474bfb459d3bff32df0fa906117af5f44b5fd51805f"
+    translatedAt: "2026-03-14T00:00:00.000Z"

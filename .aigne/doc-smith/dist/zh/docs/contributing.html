@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>贡献指南 - lightpanda-browser</title>
+  <meta name="description" content="">
+  <meta property="og:title" content="贡献指南">
+  <meta property="og:description" content="">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="../../assets/docsmith.css">
+  <link rel="stylesheet" href="../../assets/theme.css">
+  <script src="../../assets/nav.js" defer></script>
+  <script>
+    // Initialize theme from localStorage or system preference
+    (function() {
+      const stored = localStorage.getItem('docsmith-theme');
+      if (stored) {
+        document.documentElement.setAttribute('data-theme', stored);
+      } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    })();
+
+    function toggleTheme() {
+      const html = document.documentElement;
+      const current = html.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      localStorage.setItem('docsmith-theme', next);
+    }
+  </script>
+</head>
+<body data-ds-path="/contributing">
+  <header data-ds="header">
+    <a href="/zh/index.html" class="site-title">lightpanda-browser</a>
+    <div class="header-controls">
+
+    <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
+      <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="5"></circle>
+        <line x1="12" y1="1" x2="12" y2="3"></line>
+        <line x1="12" y1="21" x2="12" y2="23"></line>
+        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+        <line x1="1" y1="12" x2="3" y2="12"></line>
+        <line x1="21" y1="12" x2="23" y2="12"></line>
+        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+      </svg>
+      <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+      </svg>
+    </button>
+    </div>
+  </header>
+  <div data-ds="layout">
+    <aside data-ds="sidebar"><!-- nav.js 渲染 --></aside>
+    <main data-ds="content"><h1 id="%E8%B4%A1%E7%8C%AE%E6%8C%87%E5%8D%97" tabindex="-1">贡献指南 <a class="header-anchor" href="#%E8%B4%A1%E7%8C%AE%E6%8C%87%E5%8D%97" aria-hidden="true">#</a></h1>
+<p>Lightpanda Browser 是一个欢迎社区贡献的开源项目。本指南涵盖了有效参与贡献所需了解的一切，从签署贡献者许可协议到提交你的第一个 Pull Request。</p>
+<h2 id="%E5%89%8D%E6%8F%90%E6%9D%A1%E4%BB%B6" tabindex="-1">前提条件 <a class="header-anchor" href="#%E5%89%8D%E6%8F%90%E6%9D%A1%E4%BB%B6" aria-hidden="true">#</a></h2>
+<p>在开始贡献之前，请确保你已具备可用的开发环境：</p>
+<ul>
+<li>已安装 <strong>Zig 0.15.2</strong>（完整的安装说明请参阅<a href="building.html">从源码构建</a>）</li>
+<li>用于版本控制的 <strong>Git</strong></li>
+<li>用于提交 Pull Request 的 <strong>GitHub 账户</strong></li>
+<li>建议在进行代码贡献前了解 Lightpanda 的<a href="architecture.html">架构</a></li>
+</ul>
+<h2 id="%E8%B4%A1%E7%8C%AE%E8%80%85%E8%AE%B8%E5%8F%AF%E5%8D%8F%E8%AE%AE%EF%BC%88cla%EF%BC%89" tabindex="-1">贡献者许可协议（CLA） <a class="header-anchor" href="#%E8%B4%A1%E7%8C%AE%E8%80%85%E8%AE%B8%E5%8F%AF%E5%8D%8F%E8%AE%AE%EF%BC%88cla%EF%BC%89" aria-hidden="true">#</a></h2>
+<p>所有贡献者必须在其首次贡献被接受之前签署 Lightpanda 贡献者许可协议。该 CLA 基于 Apache 软件基金会贡献者许可协议，旨在保护作为贡献者的你和项目本身。</p>
+<h3 id="cla-%E6%B6%B5%E7%9B%96%E7%9A%84%E5%86%85%E5%AE%B9" tabindex="-1">CLA 涵盖的内容 <a class="header-anchor" href="#cla-%E6%B6%B5%E7%9B%96%E7%9A%84%E5%86%85%E5%AE%B9" aria-hidden="true">#</a></h3>
+<p>CLA 授予 Lightpanda（Selecy SAS）使用你贡献内容的许可，同时你保留对自己作品的所有权利。具体包括：</p>
+<ul>
+<li><strong>版权许可</strong>：一项永久性、全球性、非独占、免版税的许可，允许复制、准备衍生作品、展示、执行、再许可和分发你的贡献</li>
+<li><strong>专利许可</strong>：一项永久性、全球性、非独占、免版税的专利许可，涵盖因你的贡献而必然侵犯的专利权利要求</li>
+<li><strong>你的权利</strong>：你保留对贡献内容的所有权利、所有权和利益，并可将其用于任何其他目的</li>
+</ul>
+<h3 id="%E5%A6%82%E4%BD%95%E7%AD%BE%E7%BD%B2" tabindex="-1">如何签署 <a class="header-anchor" href="#%E5%A6%82%E4%BD%95%E7%AD%BE%E7%BD%B2" aria-hidden="true">#</a></h3>
+<p>CLA 签署流程通过 <a href="https://github.com/marketplace/actions/cla-assistant-lite">CLA Assistant Lite</a> 自动完成：</p>
+<ol>
+<li>在 <a href="https://github.com/lightpanda-io/browser">Lightpanda Browser 代码仓库</a>上提交一个 Pull Request</li>
+<li>CLA Assistant 机器人会在你的 PR 上评论，要求你签署</li>
+<li>回复以下内容：<code>I have read the CLA Document and I hereby sign the CLA</code></li>
+<li>机器人会记录你的签名，检查即通过</li>
+</ol>
+<p>你只需签署一次 CLA，后续所有的 Pull Request 将自动通过。</p>
+<h3 id="%E4%BC%81%E4%B8%9A%E8%B4%A1%E7%8C%AE%E8%80%85" tabindex="-1">企业贡献者 <a class="header-anchor" href="#%E4%BC%81%E4%B8%9A%E8%B4%A1%E7%8C%AE%E8%80%85" aria-hidden="true">#</a></h3>
+<p>如果你代表雇主进行贡献，请确保：</p>
+<ul>
+<li>你已获得代表雇主进行贡献的许可，或者</li>
+<li>你的雇主已放弃对你向 Lightpanda 贡献内容的知识产权</li>
+</ul>
+<p>任何从与企业实体关联的账户进行贡献的个人，均被视为获得该实体授权代表其进行贡献。</p>
+<h3 id="%E7%AC%AC%E4%B8%89%E6%96%B9%E4%BD%9C%E5%93%81" tabindex="-1">第三方作品 <a class="header-anchor" href="#%E7%AC%AC%E4%B8%89%E6%96%B9%E4%BD%9C%E5%93%81" aria-hidden="true">#</a></h3>
+<p>如果你想提交非你本人原创的作品，请将其与你的贡献分开提交。需包含：</p>
+<ul>
+<li>来源的完整详细信息</li>
+<li>任何许可或限制信息（专利、商标、许可协议）</li>
+<li>明确标注为：<code>Submitted on behalf of a third-party: [named here]</code></li>
+</ul>
+<h2 id="%E6%90%AD%E5%BB%BA%E5%BC%80%E5%8F%91%E7%8E%AF%E5%A2%83" tabindex="-1">搭建开发环境 <a class="header-anchor" href="#%E6%90%AD%E5%BB%BA%E5%BC%80%E5%8F%91%E7%8E%AF%E5%A2%83" aria-hidden="true">#</a></h2>
+<ol>
+<li>在 GitHub 上 <strong>Fork 代码仓库</strong></li>
+<li>将你的 Fork <strong>克隆到本地</strong>：</li>
+</ol>
+<pre><code class="language-bash">git clone https://github.com/YOUR_USERNAME/browser.git
+cd browser
+</code></pre>
+<ol start="3">
+<li><strong>添加上游远程仓库</strong>：</li>
+</ol>
+<pre><code class="language-bash">git remote add upstream https://github.com/lightpanda-io/browser.git
+</code></pre>
+<ol start="4">
+<li><strong>安装依赖</strong>并构建项目（详细说明请参阅<a href="building.html">从源码构建</a>）：</li>
+</ol>
+<pre><code class="language-bash">make build-dev
+</code></pre>
+<ol start="5">
+<li><strong>运行测试套件</strong>以验证你的配置：</li>
+</ol>
+<pre><code class="language-bash">make test
+</code></pre>
+<h2 id="%E8%BF%9B%E8%A1%8C%E8%B4%A1%E7%8C%AE" tabindex="-1">进行贡献 <a class="header-anchor" href="#%E8%BF%9B%E8%A1%8C%E8%B4%A1%E7%8C%AE" aria-hidden="true">#</a></h2>
+<h3 id="%E6%AD%A5%E9%AA%A4-1%EF%BC%9A%E5%88%9B%E5%BB%BA%E5%88%86%E6%94%AF" tabindex="-1">步骤 1：创建分支 <a class="header-anchor" href="#%E6%AD%A5%E9%AA%A4-1%EF%BC%9A%E5%88%9B%E5%BB%BA%E5%88%86%E6%94%AF" aria-hidden="true">#</a></h3>
+<p>从最新的 <code>main</code> 创建一个功能分支：</p>
+<pre><code class="language-bash">git fetch upstream
+git checkout -b my-feature upstream/main
+</code></pre>
+<h3 id="%E6%AD%A5%E9%AA%A4-2%EF%BC%9A%E7%BC%96%E5%86%99%E4%BB%A3%E7%A0%81" tabindex="-1">步骤 2：编写代码 <a class="header-anchor" href="#%E6%AD%A5%E9%AA%A4-2%EF%BC%9A%E7%BC%96%E5%86%99%E4%BB%A3%E7%A0%81" aria-hidden="true">#</a></h3>
+<p>Lightpanda 使用 Zig 编写。请遵循以下准则：</p>
+<ul>
+<li><strong>代码格式</strong>：所有 Zig 代码必须通过 <code>zig fmt</code> 检查。CI 流水线会在每个 Pull Request 上运行 <code>zig fmt --check</code>，如果发现格式问题将导致失败</li>
+<li><strong>保持变更聚焦</strong>：每个 Pull Request 应只关注一个问题</li>
+<li><strong>编写测试</strong>：为新功能添加单元测试（参见<a href="testing.html">测试</a>）</li>
+</ul>
+<h3 id="%E6%AD%A5%E9%AA%A4-3%EF%BC%9A%E5%9C%A8%E6%9C%AC%E5%9C%B0%E8%BF%90%E8%A1%8C%E6%A3%80%E6%9F%A5" tabindex="-1">步骤 3：在本地运行检查 <a class="header-anchor" href="#%E6%AD%A5%E9%AA%A4-3%EF%BC%9A%E5%9C%A8%E6%9C%AC%E5%9C%B0%E8%BF%90%E8%A1%8C%E6%A3%80%E6%9F%A5" aria-hidden="true">#</a></h3>
+<p>在推送之前，运行格式化工具和测试：</p>
+<pre><code class="language-bash">zig fmt --check ./*.zig ./**/*.zig
+make test
+</code></pre>
+<h3 id="%E6%AD%A5%E9%AA%A4-4%EF%BC%9A%E6%8E%A8%E9%80%81%E5%B9%B6%E6%8F%90%E4%BA%A4-pull-request" tabindex="-1">步骤 4：推送并提交 Pull Request <a class="header-anchor" href="#%E6%AD%A5%E9%AA%A4-4%EF%BC%9A%E6%8E%A8%E9%80%81%E5%B9%B6%E6%8F%90%E4%BA%A4-pull-request" aria-hidden="true">#</a></h3>
+<pre><code class="language-bash">git push origin my-feature
+</code></pre>
+<p>然后在 GitHub 上向 <code>lightpanda-io/browser</code> 的 <code>main</code> 分支提交 Pull Request。</p>
+<h2 id="pull-request-%E6%8C%87%E5%8D%97" tabindex="-1">Pull Request 指南 <a class="header-anchor" href="#pull-request-%E6%8C%87%E5%8D%97" aria-hidden="true">#</a></h2>
+<h3 id="%E6%92%B0%E5%86%99%E4%BC%98%E8%B4%A8%E7%9A%84-pr" tabindex="-1">撰写优质的 PR <a class="header-anchor" href="#%E6%92%B0%E5%86%99%E4%BC%98%E8%B4%A8%E7%9A%84-pr" aria-hidden="true">#</a></h3>
+<ul>
+<li><strong>标题</strong>：使用清晰、描述性的标题来概括变更内容</li>
+<li><strong>描述</strong>：说明变更的内容及其必要性</li>
+<li><strong>关联 Issue</strong>：引用相关的 GitHub Issue</li>
+<li><strong>精简 PR</strong>：更小、更聚焦的 Pull Request 更容易审查和合并</li>
+</ul>
+<h3 id="ci-%E6%B5%81%E6%B0%B4%E7%BA%BF" tabindex="-1">CI 流水线 <a class="header-anchor" href="#ci-%E6%B5%81%E6%B0%B4%E7%BA%BF" aria-hidden="true">#</a></h3>
+<p>每个 Pull Request 都会触发多项自动化检查：</p>
+<table>
+<thead>
+<tr>
+<th>检查项</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>zig fmt</strong></td>
+<td>验证代码格式合规性</td>
+</tr>
+<tr>
+<td><strong>zig test</strong></td>
+<td>运行单元测试套件</td>
+</tr>
+<tr>
+<td><strong>E2E tests</strong></td>
+<td>运行端到端集成测试</td>
+</tr>
+<tr>
+<td><strong>WPT</strong></td>
+<td>运行 Web 平台测试以验证标准合规性</td>
+</tr>
+<tr>
+<td><strong>CLA</strong></td>
+<td>验证贡献者是否已签署 CLA</td>
+</tr>
+</tbody>
+</table>
+<p>所有检查必须通过后，Pull Request 才能被合并。如果某项检查失败，请查看 CI 日志，修复问题后推送更新。</p>
+<h3 id="%E8%8D%89%E7%A8%BF-pull-request" tabindex="-1">草稿 Pull Request <a class="header-anchor" href="#%E8%8D%89%E7%A8%BF-pull-request" aria-hidden="true">#</a></h3>
+<p>草稿 Pull Request 会跳过 CI 检查。在以下情况下使用草稿 PR：</p>
+<ul>
+<li>你的工作仍在进行中</li>
+<li>你希望在完成实现之前获得对方案的早期反馈</li>
+</ul>
+<p>当所有变更完成后，将你的 PR 标记为"准备审查"。</p>
+<h3 id="%E4%BB%A3%E7%A0%81%E5%AE%A1%E6%9F%A5" tabindex="-1">代码审查 <a class="header-anchor" href="#%E4%BB%A3%E7%A0%81%E5%AE%A1%E6%9F%A5" aria-hidden="true">#</a></h3>
+<p>所有贡献都会经过 Lightpanda 维护者的代码审查。为了促进顺利的审查流程：</p>
+<ul>
+<li>及时回应反馈</li>
+<li>在新的提交中进行要求的修改（审查期间避免强制推送）</li>
+<li>如果反馈不清楚，请提出疑问</li>
+</ul>
+<h2 id="%E8%AE%B8%E5%8F%AF%E8%AF%81" tabindex="-1">许可证 <a class="header-anchor" href="#%E8%AE%B8%E5%8F%AF%E8%AF%81" aria-hidden="true">#</a></h2>
+<p>Lightpanda Browser 采用 <a href="https://www.gnu.org/licenses/agpl-3.0.html">AGPL-3.0-only</a> 许可证。通过贡献，你同意你的贡献将以相同的条款进行许可。</p>
+<h3 id="%E4%BE%8B%E5%A4%96%E6%83%85%E5%86%B5" tabindex="-1">例外情况 <a class="header-anchor" href="#%E4%BE%8B%E5%A4%96%E6%83%85%E5%86%B5" aria-hidden="true">#</a></h3>
+<p>以下目录采用其原始上游许可证而非 AGPL-3.0：</p>
+<ul>
+<li><code>vendor/</code> – 第三方引入的依赖</li>
+<li><code>tests/wpt/</code> – Web 平台测试（上游测试套件）</li>
+</ul>
+<p>在向这些目录贡献代码时，请注意各自的许可证要求。</p>
+<h2 id="%E8%B4%A1%E7%8C%AE%E7%B1%BB%E5%9E%8B" tabindex="-1">贡献类型 <a class="header-anchor" href="#%E8%B4%A1%E7%8C%AE%E7%B1%BB%E5%9E%8B" aria-hidden="true">#</a></h2>
+<h3 id="bug-%E6%8A%A5%E5%91%8A" tabindex="-1">Bug 报告 <a class="header-anchor" href="#bug-%E6%8A%A5%E5%91%8A" aria-hidden="true">#</a></h3>
+<p>通过 GitHub Issue 提交 Bug 报告。需包含：</p>
+<ul>
+<li>重现问题的步骤</li>
+<li>预期行为与实际行为的对比</li>
+<li>Lightpanda 版本和平台信息</li>
+<li>如果可能，提供最小重现用例</li>
+</ul>
+<h3 id="%E5%8A%9F%E8%83%BD%E8%AF%B7%E6%B1%82" tabindex="-1">功能请求 <a class="header-anchor" href="#%E5%8A%9F%E8%83%BD%E8%AF%B7%E6%B1%82" aria-hidden="true">#</a></h3>
+<p>在开始实现之前，先通过 GitHub Issue 讨论新功能。这有助于确保与项目方向一致，并避免重复工作。</p>
+<h3 id="%E4%BB%A3%E7%A0%81%E8%B4%A1%E7%8C%AE" tabindex="-1">代码贡献 <a class="header-anchor" href="#%E4%BB%A3%E7%A0%81%E8%B4%A1%E7%8C%AE" aria-hidden="true">#</a></h3>
+<p>代码贡献可以包括：</p>
+<ul>
+<li><strong>Bug 修复</strong>：针对已报告问题的补丁</li>
+<li><strong>新功能</strong>：新的浏览器功能、CDP 域支持或 Web API 实现</li>
+<li><strong>性能改进</strong>：对内存使用、页面加载时间或吞吐量的优化</li>
+<li><strong>测试覆盖</strong>：补充单元测试、E2E 测试或提升 WPT 合规性</li>
+</ul>
+<h3 id="%E6%96%87%E6%A1%A3" tabindex="-1">文档 <a class="header-anchor" href="#%E6%96%87%E6%A1%A3" aria-hidden="true">#</a></h3>
+<p>欢迎改进文档，包括修正拼写错误、完善说明或补充缺失的信息。</p>
+<h2 id="%E8%8E%B7%E5%8F%96%E5%B8%AE%E5%8A%A9" tabindex="-1">获取帮助 <a class="header-anchor" href="#%E8%8E%B7%E5%8F%96%E5%B8%AE%E5%8A%A9" aria-hidden="true">#</a></h2>
+<ul>
+<li><strong>GitHub Issues</strong>：用于 Bug 报告和功能请求</li>
+<li><strong>Pull Request 评论</strong>：用于讨论具体的变更</li>
+<li><strong>Discord</strong>：加入 Lightpanda 社区进行实时讨论</li>
+</ul>
+<h2 id="%E5%90%8E%E7%BB%AD%E6%AD%A5%E9%AA%A4" tabindex="-1">后续步骤 <a class="header-anchor" href="#%E5%90%8E%E7%BB%AD%E6%AD%A5%E9%AA%A4" aria-hidden="true">#</a></h2>
+<ul>
+<li><a href="building.html">从源码构建</a> – 搭建你的开发环境</li>
+<li><a href="testing.html">测试</a> – 了解测试基础设施</li>
+<li><a href="architecture.html">架构</a> – 理解代码库结构</li>
+<li><a href="overview.html">概述</a> – 项目概述和当前状态</li>
+</ul>
+</main>
+    <nav data-ds="toc"><div class="toc-title">本页目录</div><ul><li><a href="#%E5%89%8D%E6%8F%90%E6%9D%A1%E4%BB%B6">前提条件</a></li><li><a href="#%E8%B4%A1%E7%8C%AE%E8%80%85%E8%AE%B8%E5%8F%AF%E5%8D%8F%E8%AE%AE%EF%BC%88cla%EF%BC%89">贡献者许可协议（CLA）</a></li><ul><li><a href="#cla-%E6%B6%B5%E7%9B%96%E7%9A%84%E5%86%85%E5%AE%B9">CLA 涵盖的内容</a></li><li><a href="#%E5%A6%82%E4%BD%95%E7%AD%BE%E7%BD%B2">如何签署</a></li><li><a href="#%E4%BC%81%E4%B8%9A%E8%B4%A1%E7%8C%AE%E8%80%85">企业贡献者</a></li><li><a href="#%E7%AC%AC%E4%B8%89%E6%96%B9%E4%BD%9C%E5%93%81">第三方作品</a></li></ul><li><a href="#%E6%90%AD%E5%BB%BA%E5%BC%80%E5%8F%91%E7%8E%AF%E5%A2%83">搭建开发环境</a></li><li><a href="#%E8%BF%9B%E8%A1%8C%E8%B4%A1%E7%8C%AE">进行贡献</a></li><ul><li><a href="#%E6%AD%A5%E9%AA%A4-1%EF%BC%9A%E5%88%9B%E5%BB%BA%E5%88%86%E6%94%AF">步骤 1：创建分支</a></li><li><a href="#%E6%AD%A5%E9%AA%A4-2%EF%BC%9A%E7%BC%96%E5%86%99%E4%BB%A3%E7%A0%81">步骤 2：编写代码</a></li><li><a href="#%E6%AD%A5%E9%AA%A4-3%EF%BC%9A%E5%9C%A8%E6%9C%AC%E5%9C%B0%E8%BF%90%E8%A1%8C%E6%A3%80%E6%9F%A5">步骤 3：在本地运行检查</a></li><li><a href="#%E6%AD%A5%E9%AA%A4-4%EF%BC%9A%E6%8E%A8%E9%80%81%E5%B9%B6%E6%8F%90%E4%BA%A4-pull-request">步骤 4：推送并提交 Pull Request</a></li></ul><li><a href="#pull-request-%E6%8C%87%E5%8D%97">Pull Request 指南</a></li><ul><li><a href="#%E6%92%B0%E5%86%99%E4%BC%98%E8%B4%A8%E7%9A%84-pr">撰写优质的 PR</a></li><li><a href="#ci-%E6%B5%81%E6%B0%B4%E7%BA%BF">CI 流水线</a></li><li><a href="#%E8%8D%89%E7%A8%BF-pull-request">草稿 Pull Request</a></li><li><a href="#%E4%BB%A3%E7%A0%81%E5%AE%A1%E6%9F%A5">代码审查</a></li></ul><li><a href="#%E8%AE%B8%E5%8F%AF%E8%AF%81">许可证</a></li><ul><li><a href="#%E4%BE%8B%E5%A4%96%E6%83%85%E5%86%B5">例外情况</a></li></ul><li><a href="#%E8%B4%A1%E7%8C%AE%E7%B1%BB%E5%9E%8B">贡献类型</a></li><ul><li><a href="#bug-%E6%8A%A5%E5%91%8A">Bug 报告</a></li><li><a href="#%E5%8A%9F%E8%83%BD%E8%AF%B7%E6%B1%82">功能请求</a></li><li><a href="#%E4%BB%A3%E7%A0%81%E8%B4%A1%E7%8C%AE">代码贡献</a></li><li><a href="#%E6%96%87%E6%A1%A3">文档</a></li></ul><li><a href="#%E8%8E%B7%E5%8F%96%E5%B8%AE%E5%8A%A9">获取帮助</a></li><li><a href="#%E5%90%8E%E7%BB%AD%E6%AD%A5%E9%AA%A4">后续步骤</a></li></ul></nav>
+  </div>
+  <footer data-ds="footer">
+    <a href="https://docsmith.aigne.io/" target="_blank" rel="noopener noreferrer" class="docsmith-badge">
+      <svg class="docsmith-badge-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+        <polyline points="14 2 14 8 20 8"></polyline>
+        <line x1="16" y1="13" x2="8" y2="13"></line>
+        <line x1="16" y1="17" x2="8" y2="17"></line>
+        <polyline points="10 9 9 9 8 9"></polyline>
+      </svg>
+      <span>Built with <strong>AIGNE DocSmith</strong></span>
+    </a>
+  </footer>
+
+</body>
+</html>

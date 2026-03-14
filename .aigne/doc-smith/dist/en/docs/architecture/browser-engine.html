@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Browser Engine - lightpanda-browser</title>
+  <meta name="description" content="">
+  <meta property="og:title" content="Browser Engine">
+  <meta property="og:description" content="">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="../../../assets/docsmith.css">
+  <link rel="stylesheet" href="../../../assets/theme.css">
+  <script src="../../../assets/nav.js" defer></script>
+  <script>
+    // Initialize theme from localStorage or system preference
+    (function() {
+      const stored = localStorage.getItem('docsmith-theme');
+      if (stored) {
+        document.documentElement.setAttribute('data-theme', stored);
+      } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    })();
+
+    function toggleTheme() {
+      const html = document.documentElement;
+      const current = html.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      localStorage.setItem('docsmith-theme', next);
+    }
+  </script>
+</head>
+<body data-ds-path="/architecture/browser-engine">
+  <header data-ds="header">
+    <a href="/en/index.html" class="site-title">lightpanda-browser</a>
+    <div class="header-controls">
+      
+    <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
+      <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="5"></circle>
+        <line x1="12" y1="1" x2="12" y2="3"></line>
+        <line x1="12" y1="21" x2="12" y2="23"></line>
+        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+        <line x1="1" y1="12" x2="3" y2="12"></line>
+        <line x1="21" y1="12" x2="23" y2="12"></line>
+        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+      </svg>
+      <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+      </svg>
+    </button>
+    </div>
+  </header>
+  <div data-ds="layout">
+    <aside data-ds="sidebar"><!-- nav.js 渲染 --></aside>
+    <main data-ds="content"><h1 id="browser-engine" tabindex="-1">Browser Engine <a class="header-anchor" href="#browser-engine" aria-hidden="true">#</a></h1>
+<p>The browser engine is the core of Lightpanda, responsible for parsing HTML, managing the DOM, executing JavaScript, and orchestrating the page lifecycle. It is written in Zig for maximum performance and minimal memory overhead, making it well suited for headless automation workloads where thousands of pages may be processed in rapid succession.</p>
+<blockquote>
+<p><strong>Prerequisites</strong>: Familiarity with browser internals (DOM, JavaScript runtimes) is helpful but not required. For a high-level view of how the engine fits into the overall system, see <a href="../architecture.html">Architecture</a>.</p>
+</blockquote>
+<hr>
+<h2 id="component-overview" tabindex="-1">Component Overview <a class="header-anchor" href="#component-overview" aria-hidden="true">#</a></h2>
+<p>The browser engine is organized around four primary subsystems:</p>
+<table>
+<thead>
+<tr>
+<th>Subsystem</th>
+<th>Source</th>
+<th>Responsibility</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Browser</strong></td>
+<td><code>Browser.zig</code></td>
+<td>Top-level instance, owns the JS environment and HTTP client</td>
+</tr>
+<tr>
+<td><strong>Session</strong></td>
+<td><code>Session.zig</code></td>
+<td>Manages page lifetime, cookie jar, navigation history, and storage</td>
+</tr>
+<tr>
+<td><strong>Page</strong></td>
+<td><code>Page.zig</code></td>
+<td>DOM tree, script execution context, event loop, and Web API bindings</td>
+</tr>
+<tr>
+<td><strong>ScriptManager</strong></td>
+<td><code>ScriptManager.zig</code></td>
+<td>Loads, orders, and executes inline, async, deferred, and module scripts</td>
+</tr>
+</tbody>
+</table>
+<p>Additional subsystems handle HTML parsing (<code>parser/</code>), JavaScript integration (<code>js/</code>), DOM events (<code>EventManager.zig</code>), and memory-efficient object allocation (<code>Factory.zig</code>).</p>
+<hr>
+<h2 id="browser-instance" tabindex="-1">Browser Instance <a class="header-anchor" href="#browser-instance" aria-hidden="true">#</a></h2>
+<p><code>Browser</code> is the entry point. Each instance creates an isolated JavaScript environment (V8 isolate) and holds a reference to the shared HTTP client. You can create multiple <code>Browser</code> instances, but each contains exactly one active session at a time.</p>
+<pre><code class="language-zig">// Simplified initialization
+var browser = try Browser.init(app, .{
+    .http_client = http_client,
+});
+defer browser.deinit();
+</code></pre>
+<p>Key operations on a <code>Browser</code>:</p>
+<ul>
+<li><strong><code>newSession</code></strong> – closes any existing session and creates a fresh one with its own page, cookie jar, and navigation history.</li>
+<li><strong><code>closeSession</code></strong> – tears down the current session and issues a critical memory pressure notification to V8 so it can reclaim garbage-collected memory.</li>
+<li><strong><code>runMicrotasks</code> / <code>runMacrotasks</code></strong> – drives the JavaScript event loop. Microtasks (promises) run first, then macrotasks (timers, I/O callbacks). This two-phase approach mirrors the browser event loop specification.</li>
+</ul>
+<hr>
+<h2 id="session-management" tabindex="-1">Session Management <a class="header-anchor" href="#session-management" aria-hidden="true">#</a></h2>
+<p>A <code>Session</code> represents a browsing context that persists across navigations. It owns:</p>
+<ul>
+<li><strong>Cookie jar</strong> – stores cookies across page loads within the session.</li>
+<li><strong>Navigation history</strong> – tracks back/forward navigation via the <code>History</code> Web API.</li>
+<li><strong>Storage shed</strong> – implements <code>localStorage</code> and <code>sessionStorage</code>.</li>
+<li><strong>Origin map</strong> – enables same-origin context sharing for V8 (so scripts from the same origin share global objects as expected).</li>
+</ul>
+<p>Sessions also manage the <code>Factory</code>, which is the arena-based allocator for all DOM nodes and Web API objects on the current page. When the root page navigates, the factory is reset, releasing all memory from the previous page in a single operation rather than freeing individual objects.</p>
+<pre><code class="language-zig">// Create a new session with a notification callback
+var session = try browser.newSession(&amp;notification);
+
+// The session manages a single root page at a time
+// Navigating replaces the page but preserves cookies and history
+</code></pre>
+<hr>
+<h2 id="page-lifecycle" tabindex="-1">Page Lifecycle <a class="header-anchor" href="#page-lifecycle" aria-hidden="true">#</a></h2>
+<p><code>Page</code> is the largest and most complex component. It represents a single loaded document and manages:</p>
+<h3 id="dom-tree" tabindex="-1">DOM Tree <a class="header-anchor" href="#dom-tree" aria-hidden="true">#</a></h3>
+<p>The page owns the full DOM tree, including:</p>
+<ul>
+<li><strong>Element lookups</strong> – lazily-created style, classList, and dataset objects that save 24 bytes per element by only allocating when JavaScript actually accesses these properties.</li>
+<li><strong>Attribute identity</strong> – a lookup table ensures that repeated access to the same DOM attribute returns the same <code>Attribute</code> object, preserving identity semantics without bloating every element.</li>
+<li><strong>Shadow DOM</strong> – shadow roots are stored in a separate lookup, enabling Web Components support.</li>
+<li><strong>Custom Elements</strong> – tracks undefined custom elements and upgrades them when their definitions are registered.</li>
+</ul>
+<h3 id="event-system" tabindex="-1">Event System <a class="header-anchor" href="#event-system" aria-hidden="true">#</a></h3>
+<p>The page integrates multiple observer patterns:</p>
+<ul>
+<li><strong>MutationObserver</strong> – monitors DOM changes and batches delivery to avoid re-entrancy issues.</li>
+<li><strong>IntersectionObserver</strong> – tracks element visibility (useful for lazy-loading detection in scrapers).</li>
+<li><strong>PerformanceObserver</strong> – collects performance timing entries.</li>
+<li><strong>Live Ranges</strong> – maintains active Range objects that update automatically when the DOM mutates.</li>
+</ul>
+<h3 id="load-state-machine" tabindex="-1">Load State Machine <a class="header-anchor" href="#load-state-machine" aria-hidden="true">#</a></h3>
+<p>Page loading follows a state machine with the following phases:</p>
+<ol>
+<li><strong><code>pre</code></strong> – initial state before parsing begins.</li>
+<li><strong>Parsing</strong> – HTML is fed to the parser; the DOM tree is constructed incrementally.</li>
+<li><strong>Scripts pending</strong> – deferred and async scripts are loaded and executed in the correct order.</li>
+<li><strong><code>complete</code></strong> – all scripts, iframes, and resources have loaded; the <code>load</code> event fires on the <code>window</code>.</li>
+</ol>
+<p>The <code>_pending_loads</code> counter tracks outstanding loads (scripts, iframes) and triggers the <code>load</code> event only when it reaches zero.</p>
+<h3 id="navigation" tabindex="-1">Navigation <a class="header-anchor" href="#navigation" aria-hidden="true">#</a></h3>
+<p>Navigation can be triggered by:</p>
+<ul>
+<li><strong>CDP commands</strong> – <code>Page.navigate</code> called from the CDP layer.</li>
+<li><strong>JavaScript</strong> – <code>window.location</code> changes are queued and executed on the next tick to avoid re-entrancy during script evaluation.</li>
+<li><strong>Link clicks</strong> – handled via the event system.</li>
+</ul>
+<pre><code class="language-javascript">// From a CDP client perspective (Puppeteer example)
+await page.goto('https://example.com');
+await page.waitForSelector('#content');
+const html = await page.content();
+</code></pre>
+<hr>
+<h2 id="html-parser" tabindex="-1">HTML Parser <a class="header-anchor" href="#html-parser" aria-hidden="true">#</a></h2>
+<p>Lightpanda uses <strong>html5ever</strong>, a Rust-based HTML parser that implements the WHATWG HTML specification. The Zig integration works through a C FFI layer with a callback-driven architecture.</p>
+<h3 id="parsing-modes" tabindex="-1">Parsing Modes <a class="header-anchor" href="#parsing-modes" aria-hidden="true">#</a></h3>
+<p>The parser supports three modes:</p>
+<table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>Use Case</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>document</code></td>
+<td>Full page parsing from network response</td>
+</tr>
+<tr>
+<td><code>fragment</code></td>
+<td><code>innerHTML</code> and <code>insertAdjacentHTML</code> operations</td>
+</tr>
+<tr>
+<td><code>document_write</code></td>
+<td>Dynamic content injection via <code>document.write()</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="callback-architecture" tabindex="-1">Callback Architecture <a class="header-anchor" href="#callback-architecture" aria-hidden="true">#</a></h3>
+<p>Rather than returning a tree, html5ever calls back into Zig for each DOM operation:</p>
+<ul>
+<li><strong><code>createElement</code></strong> – allocates a new element in the page’s arena.</li>
+<li><strong><code>append</code></strong> – attaches a node or text to its parent.</li>
+<li><strong><code>pop</code></strong> – signals that an element’s children are complete.</li>
+<li><strong><code>removeFromParent</code></strong> / <strong><code>reparentChildren</code></strong> – handles tree mutations required by the HTML parsing algorithm (e.g., foster parenting, adoption agency).</li>
+</ul>
+<h3 id="streaming-parser" tabindex="-1">Streaming Parser <a class="header-anchor" href="#streaming-parser" aria-hidden="true">#</a></h3>
+<p>For large documents, a streaming API allows feeding HTML in chunks:</p>
+<pre><code class="language-zig">// Streaming parse API (simplified)
+const parser = html5ever_streaming_parser_create(doc, ctx, /* callbacks... */);
+html5ever_streaming_parser_feed(parser, chunk.ptr, chunk.len);
+// ... feed more chunks ...
+html5ever_streaming_parser_finish(parser);
+</code></pre>
+<p>This is important for network-streamed pages where the full HTML is not available upfront.</p>
+<hr>
+<h2 id="javascript-integration" tabindex="-1">JavaScript Integration <a class="header-anchor" href="#javascript-integration" aria-hidden="true">#</a></h2>
+<p>Lightpanda embeds <strong>V8</strong> as its JavaScript engine. The integration is structured in layers:</p>
+<h3 id="env-(v8-isolate)" tabindex="-1">Env (V8 Isolate) <a class="header-anchor" href="#env-(v8-isolate)" aria-hidden="true">#</a></h3>
+<p><code>Env</code> wraps a V8 isolate – an isolated sandbox for executing JavaScript. It manages:</p>
+<ul>
+<li><strong>Isolate lifecycle</strong> – creation, configuration, and teardown of the V8 isolate.</li>
+<li><strong>Context pool</strong> – up to 64 execution contexts (one per frame/origin combination).</li>
+<li><strong>Origin sharing</strong> – V8 contexts from the same origin share globals, matching standard browser behavior.</li>
+<li><strong>Task scheduling</strong> – microtasks, macrotasks, and idle tasks are routed through V8’s platform API.</li>
+</ul>
+<h3 id="bridge-(zig-to-v8-bindings)" tabindex="-1">Bridge (Zig-to-V8 Bindings) <a class="header-anchor" href="#bridge-(zig-to-v8-bindings)" aria-hidden="true">#</a></h3>
+<p>The <code>bridge.zig</code> module provides automatic binding generation between Zig structs and V8 JavaScript objects. This means Web API implementations in Zig are automatically exposed to JavaScript without manual binding code.</p>
+<pre><code class="language-zig">// The bridge maps Zig types to JavaScript automatically
+// A Zig struct like Window becomes accessible as window.* in JS
+pub fn Bridge(comptime T: type) type {
+    return bridge.Builder(T);
+}
+</code></pre>
+<h3 id="key-js-types" tabindex="-1">Key JS Types <a class="header-anchor" href="#key-js-types" aria-hidden="true">#</a></h3>
+<p>The <code>js/</code> directory provides Zig wrappers for V8 types:</p>
+<table>
+<thead>
+<tr>
+<th>Zig Type</th>
+<th>V8 Equivalent</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Value</code></td>
+<td><code>v8::Value</code></td>
+<td>Base type for all JS values</td>
+</tr>
+<tr>
+<td><code>Object</code></td>
+<td><code>v8::Object</code></td>
+<td>JavaScript object</td>
+</tr>
+<tr>
+<td><code>Function</code></td>
+<td><code>v8::Function</code></td>
+<td>Callable function</td>
+</tr>
+<tr>
+<td><code>Promise</code></td>
+<td><code>v8::Promise</code></td>
+<td>Async result</td>
+</tr>
+<tr>
+<td><code>Module</code></td>
+<td><code>v8::Module</code></td>
+<td>ES module</td>
+</tr>
+<tr>
+<td><code>Context</code></td>
+<td><code>v8::Context</code></td>
+<td>Execution context with its own global object</td>
+</tr>
+<tr>
+<td><code>TryCatch</code></td>
+<td><code>v8::TryCatch</code></td>
+<td>Exception handling scope</td>
+</tr>
+</tbody>
+</table>
+<h3 id="snapshot-support" tabindex="-1">Snapshot Support <a class="header-anchor" href="#snapshot-support" aria-hidden="true">#</a></h3>
+<p>V8 snapshots allow serializing the initialized state of the JavaScript heap. Lightpanda uses this to speed up startup by loading pre-built snapshots of the Web API bindings rather than re-initializing them for every page.</p>
+<hr>
+<h2 id="script-manager" tabindex="-1">Script Manager <a class="header-anchor" href="#script-manager" aria-hidden="true">#</a></h2>
+<p>The <code>ScriptManager</code> handles script loading and execution ordering, which is one of the most complex parts of a browser engine. It manages four categories of scripts:</p>
+<h3 id="script-categories" tabindex="-1">Script Categories <a class="header-anchor" href="#script-categories" aria-hidden="true">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Category</th>
+<th>HTML Example</th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Inline</strong></td>
+<td><code>&lt;script&gt;code&lt;/script&gt;</code></td>
+<td>Executes immediately, blocks parsing</td>
+</tr>
+<tr>
+<td><strong>Async</strong></td>
+<td><code>&lt;script async src=&quot;...&quot;&gt;</code></td>
+<td>Downloads in parallel, executes when ready (any order)</td>
+</tr>
+<tr>
+<td><strong>Deferred</strong></td>
+<td><code>&lt;script defer src=&quot;...&quot;&gt;</code></td>
+<td>Downloads in parallel, executes in order after parsing</td>
+</tr>
+<tr>
+<td><strong>Module</strong></td>
+<td><code>&lt;script type=&quot;module&quot;&gt;</code></td>
+<td>Treated as deferred by default, supports <code>import</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="import-maps" tabindex="-1">Import Maps <a class="header-anchor" href="#import-maps" aria-hidden="true">#</a></h3>
+<p>The ScriptManager supports <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/script/type/importmap">import maps</a>, which allow remapping module specifiers:</p>
+<pre><code class="language-html">&lt;script type=&quot;importmap&quot;&gt;
+{
+  &quot;imports&quot;: {
+    &quot;lodash&quot;: &quot;https://cdn.example.com/lodash/4.17.21/lodash.min.js&quot;
+  }
+}
+&lt;/script&gt;
+&lt;script type=&quot;module&quot;&gt;
+import _ from &quot;lodash&quot;;  // resolved via import map
+&lt;/script&gt;
+</code></pre>
+<h3 id="module-resolution" tabindex="-1">Module Resolution <a class="header-anchor" href="#module-resolution" aria-hidden="true">#</a></h3>
+<p>For ES modules, the ScriptManager maintains:</p>
+<ul>
+<li><strong><code>imported_modules</code></strong> – a cache of downloaded modules keyed by URL. Modules may complete out of order but are processed in dependency order by V8.</li>
+<li><strong><code>importmap</code></strong> – a mapping from module specifiers to resolved URLs.</li>
+<li><strong>Buffer pool</strong> – reusable buffers for script content to minimize allocations during page loads.</li>
+</ul>
+<h3 id="completion-tracking" tabindex="-1">Completion Tracking <a class="header-anchor" href="#completion-tracking" aria-hidden="true">#</a></h3>
+<p>The ScriptManager tracks when all scripts have finished loading and notifies the page, which is necessary before the <code>load</code> event can fire. The <code>page_notified_of_completion</code> flag ensures this notification happens exactly once.</p>
+<hr>
+<h2 id="web-api-implementation" tabindex="-1">Web API Implementation <a class="header-anchor" href="#web-api-implementation" aria-hidden="true">#</a></h2>
+<p>Lightpanda implements a substantial subset of Web APIs as Zig structs. Each struct is automatically bound to JavaScript through the bridge system. The major APIs include:</p>
+<h3 id="dom-apis" tabindex="-1">DOM APIs <a class="header-anchor" href="#dom-apis" aria-hidden="true">#</a></h3>
+<ul>
+<li><code>Document</code>, <code>Element</code>, <code>Node</code>, <code>ShadowRoot</code></li>
+<li><code>DOMParser</code>, <code>XMLSerializer</code></li>
+<li><code>Range</code>, <code>Selection</code>, <code>TreeWalker</code>, <code>NodeIterator</code></li>
+</ul>
+<h3 id="events" tabindex="-1">Events <a class="header-anchor" href="#events" aria-hidden="true">#</a></h3>
+<ul>
+<li><code>Event</code>, <code>EventTarget</code>, <code>CustomEvent</code></li>
+<li><code>MutationObserver</code>, <code>IntersectionObserver</code>, <code>ResizeObserver</code></li>
+<li><code>KeyboardEvent</code>, <code>PageTransitionEvent</code></li>
+</ul>
+<h3 id="navigation-and-history" tabindex="-1">Navigation and History <a class="header-anchor" href="#navigation-and-history" aria-hidden="true">#</a></h3>
+<ul>
+<li><code>Window</code>, <code>Location</code>, <code>History</code>, <code>Navigator</code></li>
+<li><code>URL</code>, <code>URLSearchParams</code></li>
+</ul>
+<h3 id="storage" tabindex="-1">Storage <a class="header-anchor" href="#storage" aria-hidden="true">#</a></h3>
+<ul>
+<li><code>localStorage</code>, <code>sessionStorage</code>, <code>Cookie</code></li>
+</ul>
+<h3 id="other-apis" tabindex="-1">Other APIs <a class="header-anchor" href="#other-apis" aria-hidden="true">#</a></h3>
+<ul>
+<li><code>Console</code>, <code>Crypto</code>, <code>SubtleCrypto</code></li>
+<li><code>AbortController</code>, <code>AbortSignal</code></li>
+<li><code>Blob</code>, <code>File</code>, <code>FileReader</code>, <code>FileList</code></li>
+<li><code>Performance</code>, <code>PerformanceObserver</code></li>
+<li><code>MessageChannel</code>, <code>MessagePort</code></li>
+</ul>
+<hr>
+<h2 id="memory-management" tabindex="-1">Memory Management <a class="header-anchor" href="#memory-management" aria-hidden="true">#</a></h2>
+<p>Lightpanda uses arena-based allocation throughout the engine for predictable, efficient memory management:</p>
+<h3 id="arena-hierarchy" tabindex="-1">Arena Hierarchy <a class="header-anchor" href="#arena-hierarchy" aria-hidden="true">#</a></h3>
+<ul>
+<li><strong>App arena</strong> – lives for the entire application lifetime.</li>
+<li><strong>Session arena</strong> – lives for the duration of a browsing session.</li>
+<li><strong>Page arena</strong> – lives for a single page load. When the page navigates or is closed, the entire arena is freed at once.</li>
+<li><strong>Call arena</strong> – lives for a single Zig function invocation from JavaScript. This is the preferred arena when possible, as it has the shortest lifetime.</li>
+</ul>
+<h3 id="arena-pool" tabindex="-1">Arena Pool <a class="header-anchor" href="#arena-pool" aria-hidden="true">#</a></h3>
+<p>The <code>ArenaPool</code> allows reusing arena allocators across pages to avoid repeated OS-level memory allocation. In debug mode, a leak tracker verifies that all borrowed arenas are returned to the pool.</p>
+<h3 id="lazy-allocation" tabindex="-1">Lazy Allocation <a class="header-anchor" href="#lazy-allocation" aria-hidden="true">#</a></h3>
+<p>Many per-element data structures (style objects, class lists, datasets, shadow roots) are allocated lazily – only when JavaScript code actually accesses them. This saves significant memory on pages with thousands of elements where only a few are interacted with programmatically.</p>
+<hr>
+<h2 id="related-topics" tabindex="-1">Related Topics <a class="header-anchor" href="#related-topics" aria-hidden="true">#</a></h2>
+<ul>
+<li><a href="../architecture.html">Architecture Overview</a> – high-level view of all Lightpanda components</li>
+<li><a href="../architecture/network.html">Network Layer</a> – HTTP client, WebSocket, and proxy support</li>
+<li><a href="../architecture/cdp.html">CDP Protocol</a> – Chrome DevTools Protocol implementation that drives the engine</li>
+<li><a href="../building.html">Building from Source</a> – compile and develop the engine locally</li>
+<li><a href="../testing.html">Testing</a> – run unit tests and Web Platform Tests against the engine</li>
+</ul>
+</main>
+    <nav data-ds="toc"><div class="toc-title">On this page</div><ul><li><a href="#component-overview">Component Overview</a></li><li><a href="#browser-instance">Browser Instance</a></li><li><a href="#session-management">Session Management</a></li><li><a href="#page-lifecycle">Page Lifecycle</a></li><ul><li><a href="#dom-tree">DOM Tree</a></li><li><a href="#event-system">Event System</a></li><li><a href="#load-state-machine">Load State Machine</a></li><li><a href="#navigation">Navigation</a></li></ul><li><a href="#html-parser">HTML Parser</a></li><ul><li><a href="#parsing-modes">Parsing Modes</a></li><li><a href="#callback-architecture">Callback Architecture</a></li><li><a href="#streaming-parser">Streaming Parser</a></li></ul><li><a href="#javascript-integration">JavaScript Integration</a></li><ul><li><a href="#env-(v8-isolate)">Env (V8 Isolate)</a></li><li><a href="#bridge-(zig-to-v8-bindings)">Bridge (Zig-to-V8 Bindings)</a></li><li><a href="#key-js-types">Key JS Types</a></li><li><a href="#snapshot-support">Snapshot Support</a></li></ul><li><a href="#script-manager">Script Manager</a></li><ul><li><a href="#script-categories">Script Categories</a></li><li><a href="#import-maps">Import Maps</a></li><li><a href="#module-resolution">Module Resolution</a></li><li><a href="#completion-tracking">Completion Tracking</a></li></ul><li><a href="#web-api-implementation">Web API Implementation</a></li><ul><li><a href="#dom-apis">DOM APIs</a></li><li><a href="#events">Events</a></li><li><a href="#navigation-and-history">Navigation and History</a></li><li><a href="#storage">Storage</a></li><li><a href="#other-apis">Other APIs</a></li></ul><li><a href="#memory-management">Memory Management</a></li><ul><li><a href="#arena-hierarchy">Arena Hierarchy</a></li><li><a href="#arena-pool">Arena Pool</a></li><li><a href="#lazy-allocation">Lazy Allocation</a></li></ul><li><a href="#related-topics">Related Topics</a></li></ul></nav>
+  </div>
+  <footer data-ds="footer">
+    <a href="https://docsmith.aigne.io/" target="_blank" rel="noopener noreferrer" class="docsmith-badge">
+      <svg class="docsmith-badge-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+        <polyline points="14 2 14 8 20 8"></polyline>
+        <line x1="16" y1="13" x2="8" y2="13"></line>
+        <line x1="16" y1="17" x2="8" y2="17"></line>
+        <polyline points="10 9 9 9 8 9"></polyline>
+      </svg>
+      <span>Built with <strong>AIGNE DocSmith</strong></span>
+    </a>
+  </footer>
+
+</body>
+</html>

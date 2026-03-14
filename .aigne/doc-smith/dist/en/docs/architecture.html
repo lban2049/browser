@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Architecture - lightpanda-browser</title>
+  <meta name="description" content="">
+  <meta property="og:title" content="Architecture">
+  <meta property="og:description" content="">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="../../assets/docsmith.css">
+  <link rel="stylesheet" href="../../assets/theme.css">
+  <script src="../../assets/nav.js" defer></script>
+  <script>
+    // Initialize theme from localStorage or system preference
+    (function() {
+      const stored = localStorage.getItem('docsmith-theme');
+      if (stored) {
+        document.documentElement.setAttribute('data-theme', stored);
+      } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    })();
+
+    function toggleTheme() {
+      const html = document.documentElement;
+      const current = html.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      localStorage.setItem('docsmith-theme', next);
+    }
+  </script>
+</head>
+<body data-ds-path="/architecture">
+  <header data-ds="header">
+    <a href="/en/index.html" class="site-title">lightpanda-browser</a>
+    <div class="header-controls">
+      
+    <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
+      <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="5"></circle>
+        <line x1="12" y1="1" x2="12" y2="3"></line>
+        <line x1="12" y1="21" x2="12" y2="23"></line>
+        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+        <line x1="1" y1="12" x2="3" y2="12"></line>
+        <line x1="21" y1="12" x2="23" y2="12"></line>
+        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+      </svg>
+      <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+      </svg>
+    </button>
+    </div>
+  </header>
+  <div data-ds="layout">
+    <aside data-ds="sidebar"><!-- nav.js 渲染 --></aside>
+    <main data-ds="content"><h1 id="architecture" tabindex="-1">Architecture <a class="header-anchor" href="#architecture" aria-hidden="true">#</a></h1>
+<p>Lightpanda is a headless browser written in Zig, designed for high-performance web automation, scraping, and AI agent workflows. This page provides an overview of its major architectural components and how they fit together. For in-depth coverage, see the dedicated pages linked in each section.</p>
+<h2 id="prerequisites" tabindex="-1">Prerequisites <a class="header-anchor" href="#prerequisites" aria-hidden="true">#</a></h2>
+<p>Before reading this document, you should be familiar with:</p>
+<ul>
+<li>Basic browser concepts (DOM, JavaScript execution, HTTP)</li>
+<li>The <a href="https://chromedevtools.github.io/devtools-protocol/">Chrome DevTools Protocol (CDP)</a> at a high level</li>
+<li>The <a href="overview.html">Overview</a> page for project context</li>
+</ul>
+<h2 id="high-level-design" tabindex="-1">High-Level Design <a class="header-anchor" href="#high-level-design" aria-hidden="true">#</a></h2>
+<p>Lightpanda follows a layered architecture with three main subsystems:</p>
+<ol>
+<li><strong>Browser Engine</strong> — DOM management, HTML parsing, JavaScript execution, and page lifecycle</li>
+<li><strong>Network Layer</strong> — HTTP client, WebSocket support, robots.txt handling, and proxy configuration</li>
+<li><strong>CDP Protocol</strong> — Chrome DevTools Protocol server that exposes browser functionality to automation clients</li>
+</ol>
+<p>These layers are coordinated by two central components: the <strong>App</strong> struct (application-level state) and the <strong>Server</strong> struct (connection management).</p>
+<h3 id="application-lifecycle" tabindex="-1">Application Lifecycle <a class="header-anchor" href="#application-lifecycle" aria-hidden="true">#</a></h3>
+<p>The entry point (<code>main.zig</code>) initializes the allocator, parses command-line arguments, and creates the <code>App</code> instance. The application supports three operational modes:</p>
+<ul>
+<li><strong>serve</strong> — Start a CDP-compatible WebSocket server for automation clients</li>
+<li><strong>fetch</strong> — Load a single URL and dump the rendered output</li>
+<li><strong>mcp</strong> — Start a Model Context Protocol server for AI agent integration</li>
+</ul>
+<pre><code class="language-zig">// Simplified startup flow
+var app = try App.init(allocator, &amp;args);
+defer app.deinit();
+
+switch (args.mode) {
+    .serve =&gt; { /* start CDP server */ },
+    .fetch  =&gt; { /* single-page fetch */ },
+    .mcp    =&gt; { /* MCP server */ },
+}
+</code></pre>
+<h3 id="the-app-struct" tabindex="-1">The App Struct <a class="header-anchor" href="#the-app-struct" aria-hidden="true">#</a></h3>
+<p><code>App</code> is the central coordinator that owns all major subsystems:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>network</code></td>
+<td>The I/O event loop (epoll/kqueue runtime)</td>
+</tr>
+<tr>
+<td><code>platform</code></td>
+<td>JavaScript engine platform (V8)</td>
+</tr>
+<tr>
+<td><code>snapshot</code></td>
+<td>V8 startup snapshot for fast JS context creation</td>
+</tr>
+<tr>
+<td><code>telemetry</code></td>
+<td>Anonymous usage telemetry</td>
+</tr>
+<tr>
+<td><code>arena_pool</code></td>
+<td>Pooled arena allocators for per-request memory</td>
+</tr>
+<tr>
+<td><code>config</code></td>
+<td>Parsed command-line configuration</td>
+</tr>
+</tbody>
+</table>
+<p>This design keeps global state minimal and makes the dependency graph explicit.</p>
+<h2 id="browser-engine" tabindex="-1">Browser Engine <a class="header-anchor" href="#browser-engine" aria-hidden="true">#</a></h2>
+<p>The browser engine is responsible for loading web pages, parsing HTML, building the DOM tree, and executing JavaScript. It is the largest subsystem in the codebase.</p>
+<p>Key components include:</p>
+<ul>
+<li><strong>Browser</strong> — Top-level browser instance. Each <code>Browser</code> holds a JavaScript environment and manages a single session at a time.</li>
+<li><strong>Session</strong> — Represents a browsing session with its own set of pages.</li>
+<li><strong>Page</strong> — Represents an individual web page with its DOM, JavaScript context, event handling, and navigation state.</li>
+<li><strong>ScriptManager</strong> — Handles JavaScript evaluation and script element processing.</li>
+<li><strong>Parser</strong> — An HTML5-compliant parser (based on html5ever via Zig bindings) that builds the DOM tree.</li>
+</ul>
+<pre><code class="language-zig">// Creating a browser and loading a page
+var browser = try Browser.init(app, .{ .http_client = http_client });
+defer browser.deinit();
+
+var session = try browser.newSession(notification);
+try session.navigate(url);
+</code></pre>
+<p>The Page module implements a comprehensive set of Web APIs including <code>Window</code>, <code>Document</code>, <code>Element</code>, <code>Event</code>, <code>MutationObserver</code>, <code>IntersectionObserver</code>, <code>Location</code>, <code>Performance</code>, and more. This allows Lightpanda to faithfully execute client-side JavaScript that interacts with the DOM.</p>
+<p>For full details on DOM implementation, JavaScript integration, HTML parsing, and the page lifecycle, see <a href="architecture/browser-engine.html">Browser Engine</a>.</p>
+<h2 id="network-layer" tabindex="-1">Network Layer <a class="header-anchor" href="#network-layer" aria-hidden="true">#</a></h2>
+<p>The network layer provides the I/O foundation that all HTTP requests and WebSocket connections run on. It uses a platform-native event loop (epoll on Linux, kqueue on macOS) for efficient non-blocking I/O.</p>
+<p>Key components:</p>
+<ul>
+<li><strong>Runtime</strong> — The core event loop that manages socket polling and callback dispatch.</li>
+<li><strong>http.zig</strong> — HTTP/HTTPS client implementation.</li>
+<li><strong>websocket.zig</strong> — WebSocket protocol support, used for both CDP communication and page-level WebSocket APIs.</li>
+<li><strong>Robots.zig</strong> — robots.txt fetching and compliance checking.</li>
+</ul>
+<p>The <code>HttpClient</code> sits between the browser engine and the raw network layer, handling cookies, redirects, and content-type detection.</p>
+<pre><code class="language-zig">// Network initialization is handled by App
+app.network = try Network.init(allocator, config);
+// The event loop is started when serving
+app.network.run();
+</code></pre>
+<p>For details on HTTP internals, WebSocket handling, robots.txt support, and proxy configuration, see <a href="architecture/network.html">Network Layer</a>.</p>
+<h2 id="cdp-protocol" tabindex="-1">CDP Protocol <a class="header-anchor" href="#cdp-protocol" aria-hidden="true">#</a></h2>
+<p>Lightpanda exposes a Chrome DevTools Protocol server over WebSocket, allowing standard automation tools like Puppeteer, Playwright, and chromedp to control the browser.</p>
+<p>The CDP implementation includes:</p>
+<ul>
+<li><strong>Server</strong> — Accepts incoming WebSocket connections and manages client threads. Uses a thread-per-connection model with configurable connection limits.</li>
+<li><strong>CDP dispatcher</strong> — Routes incoming JSON-RPC messages to the appropriate domain handler.</li>
+<li><strong>Domain handlers</strong> — Implement CDP domains such as <code>Page</code>, <code>Runtime</code>, <code>DOM</code>, <code>Network</code>, <code>Target</code>, and more.</li>
+</ul>
+<pre><code class="language-zig">// Server initialization binds to address and starts accepting connections
+var server = lp.Server.init(app, address);
+defer server.deinit();
+</code></pre>
+<p>The server handles the WebSocket upgrade handshake, parses CDP messages, and dispatches them to domain-specific handlers. Each client connection gets its own thread with a dedicated <code>Browser</code> instance, ensuring isolation between concurrent automation sessions.</p>
+<p>For the full list of supported CDP domains and implementation details, see <a href="architecture/cdp.html">CDP Protocol</a>.</p>
+<h2 id="memory-management" tabindex="-1">Memory Management <a class="header-anchor" href="#memory-management" aria-hidden="true">#</a></h2>
+<p>Lightpanda uses Zig’s explicit memory management model with several strategies:</p>
+<ul>
+<li><strong>Arena allocators</strong> — Per-request memory is allocated from pooled arenas (<code>ArenaPool</code>), enabling fast bulk deallocation when a page or session ends.</li>
+<li><strong>Debug allocator</strong> — In debug mode, a general-purpose allocator with leak detection is used to catch memory issues during development.</li>
+<li><strong>C allocator</strong> — In release mode, the standard C allocator is used for performance.</li>
+<li><strong>Memory pools</strong> — The server uses <code>MemoryPool</code> for client objects to reduce allocation overhead under concurrent load.</li>
+</ul>
+<p>This approach minimizes allocation overhead in hot paths while maintaining safety during development.</p>
+<h2 id="concurrency-model" tabindex="-1">Concurrency Model <a class="header-anchor" href="#concurrency-model" aria-hidden="true">#</a></h2>
+<p>Lightpanda uses a hybrid concurrency model:</p>
+<ul>
+<li><strong>Event loop</strong> — The network runtime uses non-blocking I/O with epoll/kqueue for efficient socket management.</li>
+<li><strong>Thread-per-connection</strong> — Each CDP client connection spawns a dedicated OS thread. Thread count is bounded by a configurable maximum.</li>
+<li><strong>Atomic operations</strong> — Thread-safe counters and compare-and-swap loops manage the active thread count without lock contention.</li>
+</ul>
+<pre><code class="language-zig">// CAS loop for thread-safe connection counting
+var current = self.active_threads.load(.monotonic);
+while (current &lt; max_connections) {
+    current = self.active_threads.cmpxchgWeak(
+        current, current + 1, .monotonic, .monotonic
+    ) orelse break;
+}
+</code></pre>
+<h2 id="next-steps" tabindex="-1">Next Steps <a class="header-anchor" href="#next-steps" aria-hidden="true">#</a></h2>
+<p>Dive deeper into each subsystem:</p>
+<ul>
+<li><a href="architecture/browser-engine.html">Browser Engine</a> — DOM, JavaScript, HTML parsing, and page lifecycle</li>
+<li><a href="architecture/network.html">Network Layer</a> — HTTP client, WebSocket, robots.txt, and proxy support</li>
+<li><a href="architecture/cdp.html">CDP Protocol</a> — Chrome DevTools Protocol domains and automation</li>
+</ul>
+<h2 id="related-topics" tabindex="-1">Related Topics <a class="header-anchor" href="#related-topics" aria-hidden="true">#</a></h2>
+<ul>
+<li><a href="overview.html">Overview</a> — Project introduction and key features</li>
+<li><a href="quick-start.html">Quick Start</a> — Get up and running with Lightpanda</li>
+<li><a href="building.html">Building from Source</a> — Build prerequisites and instructions</li>
+</ul>
+</main>
+    <nav data-ds="toc"><div class="toc-title">On this page</div><ul><li><a href="#prerequisites">Prerequisites</a></li><li><a href="#high-level-design">High-Level Design</a></li><ul><li><a href="#application-lifecycle">Application Lifecycle</a></li><li><a href="#the-app-struct">The App Struct</a></li></ul><li><a href="#browser-engine">Browser Engine</a></li><li><a href="#network-layer">Network Layer</a></li><li><a href="#cdp-protocol">CDP Protocol</a></li><li><a href="#memory-management">Memory Management</a></li><li><a href="#concurrency-model">Concurrency Model</a></li><li><a href="#next-steps">Next Steps</a></li><li><a href="#related-topics">Related Topics</a></li></ul></nav>
+  </div>
+  <footer data-ds="footer">
+    <a href="https://docsmith.aigne.io/" target="_blank" rel="noopener noreferrer" class="docsmith-badge">
+      <svg class="docsmith-badge-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+        <polyline points="14 2 14 8 20 8"></polyline>
+        <line x1="16" y1="13" x2="8" y2="13"></line>
+        <line x1="16" y1="17" x2="8" y2="17"></line>
+        <polyline points="10 9 9 9 8 9"></polyline>
+      </svg>
+      <span>Built with <strong>AIGNE DocSmith</strong></span>
+    </a>
+  </footer>
+
+</body>
+</html>

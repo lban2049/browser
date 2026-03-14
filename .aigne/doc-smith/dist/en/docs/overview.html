@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Overview - lightpanda-browser</title>
+  <meta name="description" content="">
+  <meta property="og:title" content="Overview">
+  <meta property="og:description" content="">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="../../assets/docsmith.css">
+  <link rel="stylesheet" href="../../assets/theme.css">
+  <script src="../../assets/nav.js" defer></script>
+  <script>
+    // Initialize theme from localStorage or system preference
+    (function() {
+      const stored = localStorage.getItem('docsmith-theme');
+      if (stored) {
+        document.documentElement.setAttribute('data-theme', stored);
+      } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    })();
+
+    function toggleTheme() {
+      const html = document.documentElement;
+      const current = html.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      localStorage.setItem('docsmith-theme', next);
+    }
+  </script>
+</head>
+<body data-ds-path="/overview">
+  <header data-ds="header">
+    <a href="/en/index.html" class="site-title">lightpanda-browser</a>
+    <div class="header-controls">
+      
+    <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
+      <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="5"></circle>
+        <line x1="12" y1="1" x2="12" y2="3"></line>
+        <line x1="12" y1="21" x2="12" y2="23"></line>
+        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+        <line x1="1" y1="12" x2="3" y2="12"></line>
+        <line x1="21" y1="12" x2="23" y2="12"></line>
+        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+      </svg>
+      <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+      </svg>
+    </button>
+    </div>
+  </header>
+  <div data-ds="layout">
+    <aside data-ds="sidebar"><!-- nav.js 渲染 --></aside>
+    <main data-ds="content"><h1 id="overview" tabindex="-1">Overview <a class="header-anchor" href="#overview" aria-hidden="true">#</a></h1>
+<p>Lightpanda is an open-source headless browser built from scratch for performance. Unlike tools that wrap Chromium, Lightpanda is written in Zig and designed specifically for headless workloads: web automation, scraping, testing, and AI agent workflows.</p>
+<h2 id="why-lightpanda%3F" tabindex="-1">Why Lightpanda? <a class="header-anchor" href="#why-lightpanda%3F" aria-hidden="true">#</a></h2>
+<p>Modern web pages rely heavily on JavaScript – Ajax calls, single-page applications, dynamic rendering. Simple HTTP requests can no longer extract useful content from most sites. The usual answer is to run a full desktop browser like Chrome in headless mode, but that approach is expensive: Chrome instances consume significant memory and CPU, making large-scale deployments costly and difficult to maintain.</p>
+<p>Lightpanda takes a different approach. It is not based on Chromium, Blink, or WebKit. It is a purpose-built headless browser with no graphical rendering layer, optimized for speed and low resource usage.</p>
+<h2 id="key-features" tabindex="-1">Key Features <a class="header-anchor" href="#key-features" aria-hidden="true">#</a></h2>
+<p>Lightpanda supports the core capabilities needed for headless browser automation:</p>
+<ul>
+<li><strong>JavaScript execution</strong> via the V8 engine</li>
+<li><strong>DOM and Web API support</strong> (partial, actively expanding)</li>
+<li><strong>CDP compatibility</strong> with Playwright, Puppeteer, and chromedp</li>
+<li><strong>HTTP loading</strong> via libcurl</li>
+<li><strong>HTML parsing</strong> via html5ever</li>
+<li><strong>Ajax support</strong> (XHR and Fetch APIs)</li>
+<li><strong>Cookies, form input, and click handling</strong></li>
+<li><strong>Network interception and proxy support</strong></li>
+<li><strong>robots.txt compliance</strong> with the <code>--obey_robots</code> flag</li>
+</ul>
+<h2 id="performance" tabindex="-1">Performance <a class="header-anchor" href="#performance" aria-hidden="true">#</a></h2>
+<p>Lightpanda delivers substantial performance improvements over Chrome in headless scenarios:</p>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Lightpanda vs Chrome</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Execution time</td>
+<td>11x faster</td>
+</tr>
+<tr>
+<td>Memory usage</td>
+<td>9x less</td>
+</tr>
+<tr>
+<td>Startup</td>
+<td>Instant</td>
+</tr>
+</tbody>
+</table>
+<p>These benchmarks were measured using Puppeteer to request 100 pages from a local website on an AWS EC2 m5.large instance. See the <a href="https://github.com/lightpanda-io/demo">benchmark repository</a> for full details.</p>
+<h2 id="how-it-works" tabindex="-1">How It Works <a class="header-anchor" href="#how-it-works" aria-hidden="true">#</a></h2>
+<p>Lightpanda runs as a CDP (Chrome DevTools Protocol) server. You start the server, then connect your existing automation tools – Puppeteer, Playwright, or chromedp – by pointing them at the Lightpanda endpoint instead of Chrome.</p>
+<pre><code class="language-bash"># Start the CDP server
+./lightpanda serve --host 127.0.0.1 --port 9222
+</code></pre>
+<pre><code class="language-js">// Connect with Puppeteer
+import puppeteer from 'puppeteer-core';
+const browser = await puppeteer.connect({
+  browserWSEndpoint: &quot;ws://127.0.0.1:9222&quot;,
+});
+</code></pre>
+<p>You can also use Lightpanda to fetch and dump a page directly from the command line:</p>
+<pre><code class="language-bash">./lightpanda fetch https://example.com
+</code></pre>
+<p>For detailed setup instructions, see <a href="quick-start.html">Quick Start</a>.</p>
+<h2 id="architecture" tabindex="-1">Architecture <a class="header-anchor" href="#architecture" aria-hidden="true">#</a></h2>
+<p>Lightpanda is composed of several core subsystems:</p>
+<ul>
+<li><strong>Browser Engine</strong> – DOM tree management, JavaScript execution via V8, HTML parsing via html5ever, and page lifecycle handling</li>
+<li><strong>Network Layer</strong> – HTTP client (libcurl), WebSocket support, robots.txt handling, and proxy configuration</li>
+<li><strong>CDP Protocol</strong> – Chrome DevTools Protocol server for browser automation, implementing key domains like Page, Runtime, Network, and DOM</li>
+</ul>
+<p>The system is written in Zig, a low-level language chosen for its fine-grained memory control and predictable performance characteristics.</p>
+<p>For a deeper look at each component, see <a href="architecture.html">Architecture</a>.</p>
+<h2 id="current-status" tabindex="-1">Current Status <a class="header-anchor" href="#current-status" aria-hidden="true">#</a></h2>
+<p>Lightpanda is in <strong>Beta</strong>. Core functionality is working and many websites render correctly, but you may encounter errors or missing Web API coverage. The team is actively expanding support.</p>
+<p>Implemented features include:</p>
+<ul>
+<li>HTTP loader, HTML parser, DOM tree</li>
+<li>JavaScript support (V8)</li>
+<li>DOM APIs, XHR, Fetch</li>
+<li>CDP/WebSocket server</li>
+<li>Click, form input, cookies</li>
+<li>Custom HTTP headers, proxy support, network interception</li>
+<li>robots.txt compliance</li>
+</ul>
+<p>There are hundreds of Web APIs, and coverage will continue to increase over time. You can track JavaScript support progress in the <a href="https://github.com/lightpanda-io/zig-js-runtime#development">zig-js-runtime</a> project.</p>
+<h2 id="telemetry" tabindex="-1">Telemetry <a class="header-anchor" href="#telemetry" aria-hidden="true">#</a></h2>
+<p>By default, Lightpanda collects and sends usage telemetry. You can disable this by setting the environment variable:</p>
+<pre><code class="language-bash">export LIGHTPANDA_DISABLE_TELEMETRY=true
+</code></pre>
+<p>Read the full privacy policy at <a href="https://lightpanda.io/privacy-policy">lightpanda.io/privacy-policy</a>.</p>
+<h2 id="getting-started" tabindex="-1">Getting Started <a class="header-anchor" href="#getting-started" aria-hidden="true">#</a></h2>
+<table>
+<thead>
+<tr>
+<th>Topic</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="quick-start.html">Quick Start</a></td>
+<td>Installation, basic usage, and first steps</td>
+</tr>
+<tr>
+<td><a href="architecture.html">Architecture</a></td>
+<td>Technical design and component overview</td>
+</tr>
+<tr>
+<td><a href="building.html">Building from Source</a></td>
+<td>Prerequisites, build instructions, and development setup</td>
+</tr>
+<tr>
+<td><a href="testing.html">Testing</a></td>
+<td>Unit tests, end-to-end tests, and Web Platform Tests</td>
+</tr>
+<tr>
+<td><a href="contributing.html">Contributing</a></td>
+<td>CLA, pull requests, and contribution guidelines</td>
+</tr>
+</tbody>
+</table>
+</main>
+    <nav data-ds="toc"><div class="toc-title">On this page</div><ul><li><a href="#why-lightpanda%3F">Why Lightpanda?</a></li><li><a href="#key-features">Key Features</a></li><li><a href="#performance">Performance</a></li><li><a href="#how-it-works">How It Works</a></li><li><a href="#architecture">Architecture</a></li><li><a href="#current-status">Current Status</a></li><li><a href="#telemetry">Telemetry</a></li><li><a href="#getting-started">Getting Started</a></li></ul></nav>
+  </div>
+  <footer data-ds="footer">
+    <a href="https://docsmith.aigne.io/" target="_blank" rel="noopener noreferrer" class="docsmith-badge">
+      <svg class="docsmith-badge-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+        <polyline points="14 2 14 8 20 8"></polyline>
+        <line x1="16" y1="13" x2="8" y2="13"></line>
+        <line x1="16" y1="17" x2="8" y2="17"></line>
+        <polyline points="10 9 9 9 8 9"></polyline>
+      </svg>
+      <span>Built with <strong>AIGNE DocSmith</strong></span>
+    </a>
+  </footer>
+
+</body>
+</html>

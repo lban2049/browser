@@ -1,0 +1,15 @@
+workspaceVersion: '1.0'
+createdAt: '2026-03-14T10:00:00Z'
+projectName: lightpanda-browser
+projectDesc: Open-source headless browser built for performance with JavaScript execution, Web API support, and CDP compatibility
+locale: en
+projectLogo: ''
+translateLanguages:
+  - zh
+sources:
+  - type: local-path
+    path: ../../
+    url: ''
+    branch: ''
+    commit: ''
+appUrl: https://bhqaqitzrfmdetn4wvwv6mlgul2wg77o52acv6zwwm4.docsmith.aigne.io/

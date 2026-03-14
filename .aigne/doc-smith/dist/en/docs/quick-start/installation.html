@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Installation - lightpanda-browser</title>
+  <meta name="description" content="">
+  <meta property="og:title" content="Installation">
+  <meta property="og:description" content="">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="../../../assets/docsmith.css">
+  <link rel="stylesheet" href="../../../assets/theme.css">
+  <script src="../../../assets/nav.js" defer></script>
+  <script>
+    // Initialize theme from localStorage or system preference
+    (function() {
+      const stored = localStorage.getItem('docsmith-theme');
+      if (stored) {
+        document.documentElement.setAttribute('data-theme', stored);
+      } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    })();
+
+    function toggleTheme() {
+      const html = document.documentElement;
+      const current = html.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      localStorage.setItem('docsmith-theme', next);
+    }
+  </script>
+</head>
+<body data-ds-path="/quick-start/installation">
+  <header data-ds="header">
+    <a href="/en/index.html" class="site-title">lightpanda-browser</a>
+    <div class="header-controls">
+      
+    <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
+      <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="5"></circle>
+        <line x1="12" y1="1" x2="12" y2="3"></line>
+        <line x1="12" y1="21" x2="12" y2="23"></line>
+        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+        <line x1="1" y1="12" x2="3" y2="12"></line>
+        <line x1="21" y1="12" x2="23" y2="12"></line>
+        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+      </svg>
+      <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+      </svg>
+    </button>
+    </div>
+  </header>
+  <div data-ds="layout">
+    <aside data-ds="sidebar"><!-- nav.js 渲染 --></aside>
+    <main data-ds="content"><h1 id="installation" tabindex="-1">Installation <a class="header-anchor" href="#installation" aria-hidden="true">#</a></h1>
+<p>Download and install Lightpanda Browser on your platform. Lightpanda provides pre-built nightly binaries for Linux and macOS, official Docker images, and the option to build from source.</p>
+<blockquote>
+<p><strong>Parent topic:</strong> <a href="../quick-start.html">Quick Start</a></p>
+</blockquote>
+<hr>
+<h2 id="prerequisites" tabindex="-1">Prerequisites <a class="header-anchor" href="#prerequisites" aria-hidden="true">#</a></h2>
+<p>Before installing Lightpanda, ensure you have:</p>
+<ul>
+<li><strong>Linux x86_64</strong> or <strong>macOS aarch64 (Apple Silicon)</strong> system</li>
+<li><strong>curl</strong> available on your system (for binary downloads)</li>
+<li><strong>Docker</strong> installed (if using the Docker method)</li>
+<li>For <strong>Windows</strong> users: <a href="https://learn.microsoft.com/en-us/windows/wsl/install">WSL2</a> configured and running</li>
+</ul>
+<p>Lightpanda does not require any runtime dependencies beyond the binary itself. There is no need to install a JDK, Node.js, or any browser engine separately.</p>
+<hr>
+<h2 id="installation-methods" tabindex="-1">Installation Methods <a class="header-anchor" href="#installation-methods" aria-hidden="true">#</a></h2>
+<p>Lightpanda offers three installation paths depending on your environment and requirements:</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Best For</th>
+<th>Platforms</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Nightly binary</strong></td>
+<td>Quick local setup, CI pipelines</td>
+<td>Linux x86_64, macOS aarch64</td>
+</tr>
+<tr>
+<td><strong>Docker</strong></td>
+<td>Containerized environments, production</td>
+<td>Linux amd64, Linux arm64</td>
+</tr>
+<tr>
+<td><strong>Build from source</strong></td>
+<td>Contributing, custom builds</td>
+<td>Any platform with Zig toolchain</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="install-from-nightly-builds" tabindex="-1">Install from Nightly Builds <a class="header-anchor" href="#install-from-nightly-builds" aria-hidden="true">#</a></h2>
+<p>Nightly builds are pre-compiled binaries published from the latest <code>main</code> branch. They are the fastest way to get started.</p>
+<h3 id="linux-x86_64" tabindex="-1">Linux x86_64 <a class="header-anchor" href="#linux-x86_64" aria-hidden="true">#</a></h3>
+<p>Download the binary, make it executable, and optionally move it to your PATH:</p>
+<pre><code class="language-bash">curl -L -o lightpanda \
+  https://github.com/lightpanda-io/browser/releases/download/nightly/lightpanda-x86_64-linux &amp;&amp; \
+chmod a+x ./lightpanda
+</code></pre>
+<p>To make it available system-wide:</p>
+<pre><code class="language-bash">sudo mv ./lightpanda /usr/local/bin/lightpanda
+</code></pre>
+<h3 id="macos-aarch64-(apple-silicon)" tabindex="-1">macOS aarch64 (Apple Silicon) <a class="header-anchor" href="#macos-aarch64-(apple-silicon)" aria-hidden="true">#</a></h3>
+<pre><code class="language-bash">curl -L -o lightpanda \
+  https://github.com/lightpanda-io/browser/releases/download/nightly/lightpanda-aarch64-macos &amp;&amp; \
+chmod a+x ./lightpanda
+</code></pre>
+<p>To make it available system-wide:</p>
+<pre><code class="language-bash">sudo mv ./lightpanda /usr/local/bin/lightpanda
+</code></pre>
+<blockquote>
+<p><strong>Note:</strong> On macOS, you may need to allow the binary in <strong>System Settings &gt; Privacy &amp; Security</strong> the first time you run it, since it is not signed with an Apple Developer certificate.</p>
+</blockquote>
+<h3 id="windows-(wsl2)" tabindex="-1">Windows (WSL2) <a class="header-anchor" href="#windows-(wsl2)" aria-hidden="true">#</a></h3>
+<p>Lightpanda runs on Windows inside WSL2. Open a WSL terminal and follow the Linux installation steps above.</p>
+<pre><code class="language-bash"># From a WSL2 terminal
+curl -L -o lightpanda \
+  https://github.com/lightpanda-io/browser/releases/download/nightly/lightpanda-x86_64-linux &amp;&amp; \
+chmod a+x ./lightpanda
+</code></pre>
+<blockquote>
+<p><strong>Tip:</strong> Install automation clients (Puppeteer, Playwright) on the Windows host rather than inside WSL. Connect them to the CDP server running in WSL using the WSL IP address.</p>
+</blockquote>
+<hr>
+<h2 id="install-from-docker" tabindex="-1">Install from Docker <a class="header-anchor" href="#install-from-docker" aria-hidden="true">#</a></h2>
+<p>Lightpanda provides <a href="https://hub.docker.com/r/lightpanda/browser">official Docker images</a> for both <code>linux/amd64</code> and <code>linux/arm64</code> architectures. The Docker image is minimal (based on <code>debian:stable-slim</code>) and starts the CDP server automatically.</p>
+<h3 id="pull-and-run" tabindex="-1">Pull and Run <a class="header-anchor" href="#pull-and-run" aria-hidden="true">#</a></h3>
+<pre><code class="language-bash">docker run -d --name lightpanda -p 9222:9222 lightpanda/browser:nightly
+</code></pre>
+<p>This starts a container with the CDP server listening on port <code>9222</code>. The default command is:</p>
+<pre><code>/bin/lightpanda serve --host 0.0.0.0 --port 9222 --log_level info
+</code></pre>
+<h3 id="verify-the-container-is-running" tabindex="-1">Verify the Container is Running <a class="header-anchor" href="#verify-the-container-is-running" aria-hidden="true">#</a></h3>
+<pre><code class="language-bash">docker ps --filter name=lightpanda
+</code></pre>
+<p>You should see the container running with port <code>9222/tcp</code> mapped.</p>
+<h3 id="custom-configuration" tabindex="-1">Custom Configuration <a class="header-anchor" href="#custom-configuration" aria-hidden="true">#</a></h3>
+<p>Override the default command to pass additional flags:</p>
+<pre><code class="language-bash">docker run -d --name lightpanda -p 9222:9222 \
+  lightpanda/browser:nightly \
+  /bin/lightpanda serve \
+    --host 0.0.0.0 \
+    --port 9222 \
+    --obey_robots \
+    --log_format pretty \
+    --log_level info
+</code></pre>
+<h3 id="stop-and-remove" tabindex="-1">Stop and Remove <a class="header-anchor" href="#stop-and-remove" aria-hidden="true">#</a></h3>
+<pre><code class="language-bash">docker stop lightpanda &amp;&amp; docker rm lightpanda
+</code></pre>
+<h3 id="docker-compose" tabindex="-1">Docker Compose <a class="header-anchor" href="#docker-compose" aria-hidden="true">#</a></h3>
+<p>For projects that use Docker Compose, add Lightpanda as a service:</p>
+<pre><code class="language-yaml">services:
+  lightpanda:
+    image: lightpanda/browser:nightly
+    ports:
+      - &quot;9222:9222&quot;
+    restart: unless-stopped
+</code></pre>
+<hr>
+<h2 id="verify-your-installation" tabindex="-1">Verify Your Installation <a class="header-anchor" href="#verify-your-installation" aria-hidden="true">#</a></h2>
+<p>After installing via any method, verify that Lightpanda is working correctly.</p>
+<h3 id="check-the-version" tabindex="-1">Check the Version <a class="header-anchor" href="#check-the-version" aria-hidden="true">#</a></h3>
+<p>Run the binary directly (or via Docker) to confirm it starts:</p>
+<pre><code class="language-bash">./lightpanda --help
+</code></pre>
+<h3 id="fetch-a-page" tabindex="-1">Fetch a Page <a class="header-anchor" href="#fetch-a-page" aria-hidden="true">#</a></h3>
+<p>Use the <code>fetch</code> command to dump the DOM of a test page:</p>
+<pre><code class="language-bash">./lightpanda fetch \
+  --obey_robots \
+  --log_format pretty \
+  --log_level info \
+  https://demo-browser.lightpanda.io/campfire-commerce/
+</code></pre>
+<p>You should see log output showing the page navigation, JavaScript execution, and HTTP requests, followed by the rendered HTML output:</p>
+<pre><code>INFO  telemetry : telemetry status . . . . . . [+0ms]
+      disabled = false
+
+INFO  page : navigate . . . . . . . . . . . . [+6ms]
+      url = https://demo-browser.lightpanda.io/campfire-commerce/
+      method = GET
+
+INFO  browser : executing script . . . . . . . [+118ms]
+      src = .../campfire-commerce/script.js
+
+&lt;!DOCTYPE html&gt;
+...
+</code></pre>
+<p>This confirms that Lightpanda is correctly installed, can fetch pages over the network, and can execute JavaScript.</p>
+<hr>
+<h2 id="telemetry" tabindex="-1">Telemetry <a class="header-anchor" href="#telemetry" aria-hidden="true">#</a></h2>
+<p>By default, Lightpanda collects and sends anonymous usage telemetry. To disable telemetry, set an environment variable before running the binary:</p>
+<pre><code class="language-bash">export LIGHTPANDA_DISABLE_TELEMETRY=true
+./lightpanda serve --host 127.0.0.1 --port 9222
+</code></pre>
+<p>For Docker, pass the environment variable with <code>-e</code>:</p>
+<pre><code class="language-bash">docker run -d --name lightpanda -p 9222:9222 \
+  -e LIGHTPANDA_DISABLE_TELEMETRY=true \
+  lightpanda/browser:nightly
+</code></pre>
+<p>You can read Lightpanda’s privacy policy at <a href="https://lightpanda.io/privacy-policy">https://lightpanda.io/privacy-policy</a>.</p>
+<hr>
+<h2 id="platform-support-matrix" tabindex="-1">Platform Support Matrix <a class="header-anchor" href="#platform-support-matrix" aria-hidden="true">#</a></h2>
+<table>
+<thead>
+<tr>
+<th>Platform</th>
+<th>Architecture</th>
+<th>Method</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Linux</td>
+<td>x86_64</td>
+<td>Nightly binary</td>
+<td>Supported</td>
+</tr>
+<tr>
+<td>Linux</td>
+<td>amd64</td>
+<td>Docker</td>
+<td>Supported</td>
+</tr>
+<tr>
+<td>Linux</td>
+<td>arm64</td>
+<td>Docker</td>
+<td>Supported</td>
+</tr>
+<tr>
+<td>macOS</td>
+<td>aarch64 (Apple Silicon)</td>
+<td>Nightly binary</td>
+<td>Supported</td>
+</tr>
+<tr>
+<td>macOS</td>
+<td>x86_64 (Intel)</td>
+<td>Build from source</td>
+<td>Community</td>
+</tr>
+<tr>
+<td>Windows</td>
+<td>x86_64</td>
+<td>WSL2 + Linux binary</td>
+<td>Supported</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="troubleshooting" tabindex="-1">Troubleshooting <a class="header-anchor" href="#troubleshooting" aria-hidden="true">#</a></h2>
+<h3 id="binary-permission-denied" tabindex="-1">Binary Permission Denied <a class="header-anchor" href="#binary-permission-denied" aria-hidden="true">#</a></h3>
+<p>If you see <code>permission denied</code> when running the binary:</p>
+<pre><code class="language-bash">chmod a+x ./lightpanda
+</code></pre>
+<h3 id="macos-gatekeeper-warning" tabindex="-1">macOS Gatekeeper Warning <a class="header-anchor" href="#macos-gatekeeper-warning" aria-hidden="true">#</a></h3>
+<p>On macOS, unsigned binaries trigger a Gatekeeper warning. Open <strong>System Settings &gt; Privacy &amp; Security</strong> and click “Allow Anyway”, or run:</p>
+<pre><code class="language-bash">xattr -d com.apple.quarantine ./lightpanda
+</code></pre>
+<h3 id="docker-port-already-in-use" tabindex="-1">Docker Port Already in Use <a class="header-anchor" href="#docker-port-already-in-use" aria-hidden="true">#</a></h3>
+<p>If port <code>9222</code> is already occupied:</p>
+<pre><code class="language-bash">docker run -d --name lightpanda -p 9223:9222 lightpanda/browser:nightly
+</code></pre>
+<p>Then connect your CDP client to <code>ws://127.0.0.1:9223</code>.</p>
+<h3 id="connection-refused-from-cdp-client" tabindex="-1">Connection Refused from CDP Client <a class="header-anchor" href="#connection-refused-from-cdp-client" aria-hidden="true">#</a></h3>
+<p>Ensure the server is running and listening on the correct host:</p>
+<ul>
+<li><strong>Local binary:</strong> Use <code>--host 127.0.0.1 --port 9222</code></li>
+<li><strong>Docker:</strong> The container uses <code>--host 0.0.0.0</code> by default, which accepts connections from outside the container</li>
+<li><strong>WSL2:</strong> Use the WSL IP address (find it with <code>hostname -I</code> inside WSL)</li>
+</ul>
+<h3 id="build-from-source-issues" tabindex="-1">Build from Source Issues <a class="header-anchor" href="#build-from-source-issues" aria-hidden="true">#</a></h3>
+<p>If you need to build from source for a platform not covered by nightly builds, see <a href="../building.html">Building from Source</a> for full prerequisites and instructions.</p>
+<hr>
+<h2 id="updating-lightpanda" tabindex="-1">Updating Lightpanda <a class="header-anchor" href="#updating-lightpanda" aria-hidden="true">#</a></h2>
+<h3 id="nightly-binary" tabindex="-1">Nightly Binary <a class="header-anchor" href="#nightly-binary" aria-hidden="true">#</a></h3>
+<p>Re-download the latest binary to replace the existing one:</p>
+<pre><code class="language-bash">curl -L -o lightpanda \
+  https://github.com/lightpanda-io/browser/releases/download/nightly/lightpanda-x86_64-linux &amp;&amp; \
+chmod a+x ./lightpanda
+</code></pre>
+<h3 id="docker" tabindex="-1">Docker <a class="header-anchor" href="#docker" aria-hidden="true">#</a></h3>
+<p>Pull the latest image and recreate the container:</p>
+<pre><code class="language-bash">docker pull lightpanda/browser:nightly
+docker stop lightpanda &amp;&amp; docker rm lightpanda
+docker run -d --name lightpanda -p 9222:9222 lightpanda/browser:nightly
+</code></pre>
+<hr>
+<h2 id="next-steps" tabindex="-1">Next Steps <a class="header-anchor" href="#next-steps" aria-hidden="true">#</a></h2>
+<ul>
+<li><a href="../quick-start/cdp-server.html">CDP Server</a> – Start the CDP server and connect with Puppeteer or Playwright</li>
+<li><a href="../architecture.html">Architecture</a> – Understand how Lightpanda works under the hood</li>
+<li><a href="../building.html">Building from Source</a> – Build Lightpanda from source for development or custom platforms</li>
+</ul>
+</main>
+    <nav data-ds="toc"><div class="toc-title">On this page</div><ul><li><a href="#prerequisites">Prerequisites</a></li><li><a href="#installation-methods">Installation Methods</a></li><li><a href="#install-from-nightly-builds">Install from Nightly Builds</a></li><ul><li><a href="#linux-x86_64">Linux x86_64</a></li><li><a href="#macos-aarch64-(apple-silicon)">macOS aarch64 (Apple Silicon)</a></li><li><a href="#windows-(wsl2)">Windows (WSL2)</a></li></ul><li><a href="#install-from-docker">Install from Docker</a></li><ul><li><a href="#pull-and-run">Pull and Run</a></li><li><a href="#verify-the-container-is-running">Verify the Container is Running</a></li><li><a href="#custom-configuration">Custom Configuration</a></li><li><a href="#stop-and-remove">Stop and Remove</a></li><li><a href="#docker-compose">Docker Compose</a></li></ul><li><a href="#verify-your-installation">Verify Your Installation</a></li><ul><li><a href="#check-the-version">Check the Version</a></li><li><a href="#fetch-a-page">Fetch a Page</a></li></ul><li><a href="#telemetry">Telemetry</a></li><li><a href="#platform-support-matrix">Platform Support Matrix</a></li><li><a href="#troubleshooting">Troubleshooting</a></li><ul><li><a href="#binary-permission-denied">Binary Permission Denied</a></li><li><a href="#macos-gatekeeper-warning">macOS Gatekeeper Warning</a></li><li><a href="#docker-port-already-in-use">Docker Port Already in Use</a></li><li><a href="#connection-refused-from-cdp-client">Connection Refused from CDP Client</a></li><li><a href="#build-from-source-issues">Build from Source Issues</a></li></ul><li><a href="#updating-lightpanda">Updating Lightpanda</a></li><ul><li><a href="#nightly-binary">Nightly Binary</a></li><li><a href="#docker">Docker</a></li></ul><li><a href="#next-steps">Next Steps</a></li></ul></nav>
+  </div>
+  <footer data-ds="footer">
+    <a href="https://docsmith.aigne.io/" target="_blank" rel="noopener noreferrer" class="docsmith-badge">
+      <svg class="docsmith-badge-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+        <polyline points="14 2 14 8 20 8"></polyline>
+        <line x1="16" y1="13" x2="8" y2="13"></line>
+        <line x1="16" y1="17" x2="8" y2="17"></line>
+        <polyline points="10 9 9 9 8 9"></polyline>
+      </svg>
+      <span>Built with <strong>AIGNE DocSmith</strong></span>
+    </a>
+  </footer>
+
+</body>
+</html>

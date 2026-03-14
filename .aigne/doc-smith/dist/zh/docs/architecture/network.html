@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>网络层 - lightpanda-browser</title>
+  <meta name="description" content="">
+  <meta property="og:title" content="网络层">
+  <meta property="og:description" content="">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="../../../assets/docsmith.css">
+  <link rel="stylesheet" href="../../../assets/theme.css">
+  <script src="../../../assets/nav.js" defer></script>
+  <script>
+    // Initialize theme from localStorage or system preference
+    (function() {
+      const stored = localStorage.getItem('docsmith-theme');
+      if (stored) {
+        document.documentElement.setAttribute('data-theme', stored);
+      } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    })();
+
+    function toggleTheme() {
+      const html = document.documentElement;
+      const current = html.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      localStorage.setItem('docsmith-theme', next);
+    }
+  </script>
+</head>
+<body data-ds-path="/architecture/network">
+  <header data-ds="header">
+    <a href="/zh/index.html" class="site-title">lightpanda-browser</a>
+    <div class="header-controls">
+
+    <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
+      <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="5"></circle>
+        <line x1="12" y1="1" x2="12" y2="3"></line>
+        <line x1="12" y1="21" x2="12" y2="23"></line>
+        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+        <line x1="1" y1="12" x2="3" y2="12"></line>
+        <line x1="21" y1="12" x2="23" y2="12"></line>
+        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+      </svg>
+      <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+      </svg>
+    </button>
+    </div>
+  </header>
+  <div data-ds="layout">
+    <aside data-ds="sidebar"><!-- nav.js 渲染 --></aside>
+    <main data-ds="content"><h1 id="%E7%BD%91%E7%BB%9C%E5%B1%82" tabindex="-1">网络层 <a class="header-anchor" href="#%E7%BD%91%E7%BB%9C%E5%B1%82" aria-hidden="true">#</a></h1>
+<p>Lightpanda 的网络层负责处理所有 HTTP 通信、WebSocket 连接、robots.txt 合规性检查以及代理配置。它基于 libcurl 构建，提供了一个高性能的异步网络栈，专为无头浏览器自动化场景设计。</p>
+<blockquote>
+<p><strong>上级主题：</strong> <a href="../architecture.html">架构</a></p>
+</blockquote>
+<h2 id="%E6%A6%82%E8%BF%B0" tabindex="-1">概述 <a class="header-anchor" href="#%E6%A6%82%E8%BF%B0" aria-hidden="true">#</a></h2>
+<p>Lightpanda 的网络层由四个主要模块组成：</p>
+<ul>
+<li><strong>HTTP 客户端</strong>（<code>HttpClient.zig</code>）——高级客户端，负责管理连接、请求队列、传输生命周期以及与浏览器页面的集成</li>
+<li><strong>HTTP 核心</strong>（<code>http.zig</code>）——底层 libcurl 绑定，用于连接、头部信息和多句柄管理</li>
+<li><strong>WebSocket</strong>（<code>websocket.zig</code>）——完整的 WebSocket 实现，供 CDP 服务器进行实时通信</li>
+<li><strong>Robots.txt</strong>（<code>Robots.zig</code>）——符合 RFC 9309 标准的 robots.txt 规则解析器和评估器</li>
+</ul>
+<h2 id="http-%E6%A0%B8%E5%BF%83" tabindex="-1">HTTP 核心 <a class="header-anchor" href="#http-%E6%A0%B8%E5%BF%83" aria-hidden="true">#</a></h2>
+<p>HTTP 核心模块封装了 libcurl，提供连接管理、头部处理和多路复用请求处理功能。</p>
+<h3 id="%E8%BF%9E%E6%8E%A5" tabindex="-1">连接 <a class="header-anchor" href="#%E8%BF%9E%E6%8E%A5" aria-hidden="true">#</a></h3>
+<p>每个 HTTP 连接由一个封装了 libcurl easy handle 的 <code>Connection</code> 结构体表示。连接初始化时会配置超时、重定向、代理、TLS 和压缩等参数：</p>
+<pre><code class="language-zig">const conn = try Net.Connection.init(ca_blob, config);
+try conn.setURL(&quot;https://example.com&quot;);
+try conn.setMethod(.GET);
+const status = try conn.request(&amp;http_headers);
+</code></pre>
+<p>初始化时应用的关键连接设置：</p>
+<table>
+<thead>
+<tr>
+<th>设置</th>
+<th>描述</th>
+<th>来源</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>timeout_ms</code></td>
+<td>请求总超时时间</td>
+<td><code>Config.httpTimeout()</code></td>
+</tr>
+<tr>
+<td><code>connect_timeout_ms</code></td>
+<td>TCP 连接超时时间</td>
+<td><code>Config.httpConnectTimeout()</code></td>
+</tr>
+<tr>
+<td><code>max_redirs</code></td>
+<td>最大重定向跳数</td>
+<td><code>Config.httpMaxRedirects()</code></td>
+</tr>
+<tr>
+<td><code>follow_location</code></td>
+<td>自动跟随重定向</td>
+<td>始终启用</td>
+</tr>
+<tr>
+<td><code>accept_encoding</code></td>
+<td>压缩支持（gzip 等）</td>
+<td>自动检测</td>
+</tr>
+</tbody>
+</table>
+<h3 id="http-%E6%96%B9%E6%B3%95" tabindex="-1">HTTP 方法 <a class="header-anchor" href="#http-%E6%96%B9%E6%B3%95" aria-hidden="true">#</a></h3>
+<p>网络层通过 <code>Method</code> 枚举支持所有标准 HTTP 方法：</p>
+<pre><code class="language-zig">pub const Method = enum(u8) {
+    GET, PUT, POST, DELETE, HEAD, OPTIONS, PATCH, PROPFIND,
+};
+</code></pre>
+<h3 id="%E5%A4%B4%E9%83%A8%E4%BF%A1%E6%81%AF" tabindex="-1">头部信息 <a class="header-anchor" href="#%E5%A4%B4%E9%83%A8%E4%BF%A1%E6%81%AF" aria-hidden="true">#</a></h3>
+<p><code>Headers</code> 结构体将请求头管理为 libcurl 链表。它支持遍历、Cookie 注入和自定义头部添加：</p>
+<pre><code class="language-zig">var headers = try Net.Headers.init(user_agent_header);
+defer headers.deinit();
+try headers.add(&quot;Content-Type: application/json&quot;);
+</code></pre>
+<p>响应头可以通过两种迭代器类型读取：<code>CurlHeaderIterator</code> 用于实时响应，<code>ListHeaderIterator</code> 用于注入的响应（由 CDP 请求拦截使用）。</p>
+<h3 id="%E8%AE%A4%E8%AF%81" tabindex="-1">认证 <a class="header-anchor" href="#%E8%AE%A4%E8%AF%81" aria-hidden="true">#</a></h3>
+<p><code>AuthChallenge</code> 结构体解析 <code>WWW-Authenticate</code> 和 <code>Proxy-Authenticate</code> 头部，支持 Basic 和 Digest 认证方案：</p>
+<pre><code class="language-zig">const challenge = try AuthChallenge.parse(status, header_value);
+// challenge.source: .server or .proxy
+// challenge.scheme: .basic or .digest
+</code></pre>
+<h3 id="%E5%A4%9A%E5%8F%A5%E6%9F%84%E7%AE%A1%E7%90%86" tabindex="-1">多句柄管理 <a class="header-anchor" href="#%E5%A4%9A%E5%8F%A5%E6%9F%84%E7%AE%A1%E7%90%86" aria-hidden="true">#</a></h3>
+<p>对于并发请求，<code>Handles</code> 结构体封装了 libcurl 的 multi 接口。它管理一个连接池，并支持可配置的主机级并发限制：</p>
+<pre><code class="language-zig">var handles = try Net.Handles.init(config);
+try handles.add(&amp;conn);
+const running = try handles.perform();
+try handles.poll(extra_fds, timeout_ms);
+</code></pre>
+<p>multi handle 使用 <code>curl_multi_poll</code> 进行高效的 I/O 多路复用，<code>readMessage</code> 用于获取已完成的传输结果。</p>
+<h2 id="http-%E5%AE%A2%E6%88%B7%E7%AB%AF" tabindex="-1">HTTP 客户端 <a class="header-anchor" href="#http-%E5%AE%A2%E6%88%B7%E7%AB%AF" aria-hidden="true">#</a></h2>
+<p><code>HttpClient</code> 是与浏览器页面关联的高级网络客户端。它管理 HTTP 请求的完整生命周期，包括队列管理、传输管理、robots.txt 检查以及 CDP 网络事件集成。</p>
+<h3 id="%E8%AF%B7%E6%B1%82%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F" tabindex="-1">请求生命周期 <a class="header-anchor" href="#%E8%AF%B7%E6%B1%82%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F" aria-hidden="true">#</a></h3>
+<ol>
+<li><strong>创建请求</strong>——使用 URL、方法、头部信息和可选的请求体创建一个 <code>Request</code></li>
+<li><strong>Robots.txt 检查</strong>——如果启用了 robots 规则执行，客户端会在继续之前检查该 URL 是否被允许访问</li>
+<li><strong>排队或执行</strong>——如果有可用连接，请求立即开始；否则进入队列等待</li>
+<li><strong>传输</strong>——一个 <code>Transfer</code> 对象跟踪活跃的请求，管理响应缓冲区并处理回调</li>
+<li><strong>完成</strong>——响应数据被交付，连接返回连接池，队列中的请求开始执行</li>
+</ol>
+<h3 id="%E8%BF%9E%E6%8E%A5%E6%B1%A0" tabindex="-1">连接池 <a class="header-anchor" href="#%E8%BF%9E%E6%8E%A5%E6%B1%A0" aria-hidden="true">#</a></h3>
+<p>客户端通过双向链表（<code>in_use</code>）维护连接。当传输完成时，连接句柄会被回收。<code>max_host_connections</code> 设置（来自 <code>Config.httpMaxHostOpen()</code>）限制每个主机的并发连接数，防止资源耗尽。</p>
+<h3 id="%E8%AF%B7%E6%B1%82%E9%98%9F%E5%88%97" tabindex="-1">请求队列 <a class="header-anchor" href="#%E8%AF%B7%E6%B1%82%E9%98%9F%E5%88%97" aria-hidden="true">#</a></h3>
+<p>当所有连接句柄都在使用中时，新请求会被添加到 <code>TransferQueue</code>（双向链表）。随着传输的完成，队列中的请求会被自动出队并启动。</p>
+<h3 id="%E8%AF%B7%E6%B1%82%E6%8B%A6%E6%88%AA%EF%BC%88cdp%EF%BC%89" tabindex="-1">请求拦截（CDP） <a class="header-anchor" href="#%E8%AF%B7%E6%B1%82%E6%8B%A6%E6%88%AA%EF%BC%88cdp%EF%BC%89" aria-hidden="true">#</a></h3>
+<p>HTTP 客户端支持 CDP 网络请求拦截。当 CDP 客户端连接后，请求可以在到达网络之前被暂停、修改或直接完成：</p>
+<pre><code class="language-zig">// CDP can intercept requests at two stages:
+// 1. Before the request is sent (Fetch.requestPaused)
+// 2. After response headers arrive (Fetch.authRequired)
+</code></pre>
+<p><code>intercepted</code> 计数器跟踪被暂停的请求，确保即使请求被 CDP 层持有，网络空闲检测仍能正常工作。</p>
+<h3 id="%E4%BB%A3%E7%90%86%E9%85%8D%E7%BD%AE" tabindex="-1">代理配置 <a class="header-anchor" href="#%E4%BB%A3%E7%90%86%E9%85%8D%E7%BD%AE" aria-hidden="true">#</a></h3>
+<p>代理支持在初始化时配置，也可以在运行时通过 CDP 进行更改：</p>
+<pre><code class="language-zig">// Set via config at startup
+const http_proxy = config.httpProxy();
+
+// Changed at runtime via CDP
+client.setProxy(&quot;http://proxy.example.com:8080&quot;);
+client.restoreOriginalProxy(); // Revert to config value
+</code></pre>
+<p>支持 HTTP 和 HTTPS 代理协议。配置代理后，TLS 验证设置也会应用于代理连接。</p>
+<h3 id="tls-%E9%85%8D%E7%BD%AE" tabindex="-1">TLS 配置 <a class="header-anchor" href="#tls-%E9%85%8D%E7%BD%AE" aria-hidden="true">#</a></h3>
+<p>TLS 验证可以进行全局控制。当提供 CA 证书 blob 时，会执行完整的主机和对端验证。未提供时，可以禁用验证（适用于开发环境）：</p>
+<pre><code class="language-zig">conn.setTlsVerify(true, use_proxy);
+// Verifies both ssl_verify_host and ssl_verify_peer
+// Also applies to proxy if use_proxy is true
+</code></pre>
+<h2 id="websocket" tabindex="-1">WebSocket <a class="header-anchor" href="#websocket" aria-hidden="true">#</a></h2>
+<p>WebSocket 模块为 CDP 服务器实现了 WebSocket 协议（RFC 6455）。它处理升级握手、消息帧封装和双向通信。</p>
+<h3 id="%E8%BF%9E%E6%8E%A5%E5%8D%87%E7%BA%A7" tabindex="-1">连接升级 <a class="header-anchor" href="#%E8%BF%9E%E6%8E%A5%E5%8D%87%E7%BA%A7" aria-hidden="true">#</a></h3>
+<p>升级过程会验证 HTTP 升级请求，检查必需的头部（<code>Upgrade</code>、<code>Connection</code>、<code>Sec-WebSocket-Key</code>、<code>Sec-WebSocket-Version</code>），并使用 SHA-1 计算 <code>Sec-WebSocket-Accept</code> 响应：</p>
+<pre><code class="language-zig">try ws_conn.upgrade(request);
+// Validates HTTP/1.1, required headers
+// Responds with 101 Switching Protocols
+</code></pre>
+<h3 id="%E6%B6%88%E6%81%AF%E7%B1%BB%E5%9E%8B" tabindex="-1">消息类型 <a class="header-anchor" href="#%E6%B6%88%E6%81%AF%E7%B1%BB%E5%9E%8B" aria-hidden="true">#</a></h3>
+<p>WebSocket 实现支持所有标准帧类型：</p>
+<table>
+<thead>
+<tr>
+<th>类型</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>text</code></td>
+<td>UTF-8 文本数据（CDP JSON 消息的主要类型）</td>
+</tr>
+<tr>
+<td><code>binary</code></td>
+<td>二进制数据帧</td>
+</tr>
+<tr>
+<td><code>close</code></td>
+<td>带状态码的连接关闭</td>
+</tr>
+<tr>
+<td><code>ping</code></td>
+<td>保活 ping</td>
+</tr>
+<tr>
+<td><code>pong</code></td>
+<td>保活 pong 响应</td>
+</tr>
+</tbody>
+</table>
+<h3 id="%E6%B6%88%E6%81%AF%E8%AF%BB%E5%8F%96" tabindex="-1">消息读取 <a class="header-anchor" href="#%E6%B6%88%E6%81%AF%E8%AF%BB%E5%8F%96" aria-hidden="true">#</a></h3>
+<p><code>Reader</code> 是一个流式解析器，处理 WebSocket 帧封装，包括可变长度头部、掩码（客户端到服务器）和消息分片：</p>
+<pre><code class="language-zig">var reader = try websocket.Reader(true).init(allocator);
+// true = expect masked frames (from client)
+
+while (try reader.next()) |msg| {
+    switch (msg.type) {
+        .text =&gt; handleCDPMessage(msg.data),
+        .ping =&gt; try ws.sendPong(msg.data),
+        .close =&gt; break,
+    }
+}
+</code></pre>
+<p>读取器使用动态增长的缓冲区（初始大小 16KB），支持最大 <code>CDP_MAX_MESSAGE_SIZE</code> 的消息。分片消息会被自动重组。</p>
+<h3 id="simd-%E4%BC%98%E5%8C%96%E6%8E%A9%E7%A0%81%E5%A4%84%E7%90%86" tabindex="-1">SIMD 优化掩码处理 <a class="header-anchor" href="#simd-%E4%BC%98%E5%8C%96%E6%8E%A9%E7%A0%81%E5%A4%84%E7%90%86" aria-hidden="true">#</a></h3>
+<p>根据协议规范，客户端到服务器的 WebSocket 帧需要进行 XOR 掩码处理。Lightpanda 在可用时使用 SIMD 指令进行高效的解除掩码操作：</p>
+<pre><code class="language-zig">// Uses std.simd.suggestVectorLength for platform-optimal
+// vector width, falling back to scalar XOR for small payloads
+</code></pre>
+<h3 id="%E5%8F%91%E9%80%81%E6%B6%88%E6%81%AF" tabindex="-1">发送消息 <a class="header-anchor" href="#%E5%8F%91%E9%80%81%E6%B6%88%E6%81%AF" aria-hidden="true">#</a></h3>
+<p><code>WsConnection</code> 提供了针对不同使用场景优化的多种发送方法：</p>
+<ul>
+<li><code>sendJSON</code>——将 Zig 结构体序列化为 JSON，并封装为 WebSocket 文本消息。预留 10 字节用于可变长度头部，避免额外的内存分配。</li>
+<li><code>sendPong</code>——响应 ping 帧</li>
+<li><code>sendHttpError</code>——在 WebSocket 升级之前发送 HTTP 错误响应</li>
+</ul>
+<p>发送路径通过将套接字临时切换为阻塞模式来处理 <code>WouldBlock</code>，避免了维护写入队列的需要。</p>
+<h2 id="robots.txt-%E5%A4%84%E7%90%86" tabindex="-1">Robots.txt 处理 <a class="header-anchor" href="#robots.txt-%E5%A4%84%E7%90%86" aria-hidden="true">#</a></h2>
+<p>robots.txt 模块实现了 RFC 9309 网络爬虫访问控制标准。这对于 Lightpanda 在抓取和自动化场景中的使用尤为重要。</p>
+<h3 id="%E8%A7%A3%E6%9E%90" tabindex="-1">解析 <a class="header-anchor" href="#%E8%A7%A3%E6%9E%90" aria-hidden="true">#</a></h3>
+<p>解析器逐行处理 robots.txt 文件，提取 <code>User-agent</code>、<code>Allow</code> 和 <code>Disallow</code> 指令。它支持：</p>
+<ul>
+<li>UTF-8 BOM 去除</li>
+<li>行内注释</li>
+<li>不区分大小写的用户代理匹配</li>
+<li>每个规则组的多个用户代理条目</li>
+<li>通配符（<code>*</code>）用户代理回退</li>
+</ul>
+<pre><code class="language-zig">var robots = try Robots.fromBytes(allocator, &quot;MyBot&quot;, robots_txt_content);
+defer robots.deinit(allocator);
+</code></pre>
+<h3 id="%E6%A8%A1%E5%BC%8F%E5%8C%B9%E9%85%8D" tabindex="-1">模式匹配 <a class="header-anchor" href="#%E6%A8%A1%E5%BC%8F%E5%8C%B9%E9%85%8D" aria-hidden="true">#</a></h3>
+<p>支持三种模式类型：</p>
+<table>
+<thead>
+<tr>
+<th>模式</th>
+<th>示例</th>
+<th>行为</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>前缀</strong></td>
+<td><code>/admin/</code></td>
+<td>匹配以该模式开头的任何路径</td>
+</tr>
+<tr>
+<td><strong>精确</strong></td>
+<td><code>/admin$</code></td>
+<td>精确匹配路径（尾部 <code>$</code> 锚点）</td>
+</tr>
+<tr>
+<td><strong>通配符</strong></td>
+<td><code>/*.php</code></td>
+<td><code>*</code> 匹配零个或多个字符</td>
+</tr>
+</tbody>
+</table>
+<p>规则按模式长度排序（最长优先），相同长度时 <code>Allow</code> 优先。这确保了最具体的规则具有最高优先级。</p>
+<h3 id="robot-%E5%AD%98%E5%82%A8" tabindex="-1">Robot 存储 <a class="header-anchor" href="#robot-%E5%AD%98%E5%82%A8" aria-hidden="true">#</a></h3>
+<p><code>RobotStore</code> 提供了按域名缓存已解析 robots.txt 文件的线程安全机制。它使用受互斥锁保护的不区分大小写的哈希映射：</p>
+<pre><code class="language-zig">// Check cache first
+if (store.get(domain)) |entry| {
+    switch (entry) {
+        .present =&gt; |robots| return robots.isAllowed(path),
+        .absent =&gt; return true, // No robots.txt found
+    }
+}
+
+// Fetch and cache
+const robots = try store.robotsFromBytes(user_agent, bytes);
+try store.put(domain, robots);
+</code></pre>
+<p>当未找到 robots.txt 文件（HTTP 404）时，存储会将其记录为 <code>.absent</code>，以避免重复获取。</p>
+<h3 id="%E4%B8%8E-http-%E5%AE%A2%E6%88%B7%E7%AB%AF%E7%9A%84%E9%9B%86%E6%88%90" tabindex="-1">与 HTTP 客户端的集成 <a class="header-anchor" href="#%E4%B8%8E-http-%E5%AE%A2%E6%88%B7%E7%AB%AF%E7%9A%84%E9%9B%86%E6%88%90" aria-hidden="true">#</a></h3>
+<p>HTTP 客户端将 robots.txt 检查集成到请求生命周期中。当启用 robots 规则执行时，客户端会：</p>
+<ol>
+<li>检查 <code>RobotStore</code> 缓存中是否有目标域名的记录</li>
+<li>如果未缓存，将原始请求加入队列，先获取 robots.txt</li>
+<li>根据请求路径评估规则</li>
+<li>根据评估结果决定继续或阻止请求</li>
+</ol>
+<p>对同一未缓存域名的多个请求会被批量放入 <code>pending_robots_queue</code>，这样每个域名只需获取一次 robots.txt。</p>
+<h2 id="%E9%85%8D%E7%BD%AE%E5%8F%82%E8%80%83" tabindex="-1">配置参考 <a class="header-anchor" href="#%E9%85%8D%E7%BD%AE%E5%8F%82%E8%80%83" aria-hidden="true">#</a></h2>
+<p>网络层通过 <code>Config</code> 模块进行配置。关键设置：</p>
+<table>
+<thead>
+<tr>
+<th>设置</th>
+<th>方法</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>HTTP 超时</td>
+<td><code>httpTimeout()</code></td>
+<td>请求总超时时间（毫秒）</td>
+</tr>
+<tr>
+<td>连接超时</td>
+<td><code>httpConnectTimeout()</code></td>
+<td>TCP 连接超时时间（毫秒）</td>
+</tr>
+<tr>
+<td>最大重定向数</td>
+<td><code>httpMaxRedirects()</code></td>
+<td>跟随 HTTP 重定向的最大次数</td>
+</tr>
+<tr>
+<td>最大主机连接数</td>
+<td><code>httpMaxHostOpen()</code></td>
+<td>每个主机的并发连接数</td>
+</tr>
+<tr>
+<td>HTTP 代理</td>
+<td><code>httpProxy()</code></td>
+<td>代理 URL（HTTP/HTTPS）</td>
+</tr>
+<tr>
+<td>TLS 验证</td>
+<td><code>tlsVerifyHost()</code></td>
+<td>启用/禁用 TLS 证书验证</td>
+</tr>
+</tbody>
+</table>
+<h2 id="%E7%9B%B8%E5%85%B3%E4%B8%BB%E9%A2%98" tabindex="-1">相关主题 <a class="header-anchor" href="#%E7%9B%B8%E5%85%B3%E4%B8%BB%E9%A2%98" aria-hidden="true">#</a></h2>
+<ul>
+<li><a href="../architecture.html">架构</a>——整体系统架构</li>
+<li><a href="../architecture/browser-engine.html">浏览器引擎</a>——浏览器引擎如何使用网络层</li>
+<li><a href="../architecture/cdp.html">CDP 协议</a>——通过 WebSocket 通信的 CDP 协议实现</li>
+</ul>
+</main>
+    <nav data-ds="toc"><div class="toc-title">本页内容</div><ul><li><a href="#%E6%A6%82%E8%BF%B0">概述</a></li><li><a href="#http-%E6%A0%B8%E5%BF%83">HTTP 核心</a></li><ul><li><a href="#%E8%BF%9E%E6%8E%A5">连接</a></li><li><a href="#http-%E6%96%B9%E6%B3%95">HTTP 方法</a></li><li><a href="#%E5%A4%B4%E9%83%A8%E4%BF%A1%E6%81%AF">头部信息</a></li><li><a href="#%E8%AE%A4%E8%AF%81">认证</a></li><li><a href="#%E5%A4%9A%E5%8F%A5%E6%9F%84%E7%AE%A1%E7%90%86">多句柄管理</a></li></ul><li><a href="#http-%E5%AE%A2%E6%88%B7%E7%AB%AF">HTTP 客户端</a></li><ul><li><a href="#%E8%AF%B7%E6%B1%82%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F">请求生命周期</a></li><li><a href="#%E8%BF%9E%E6%8E%A5%E6%B1%A0">连接池</a></li><li><a href="#%E8%AF%B7%E6%B1%82%E9%98%9F%E5%88%97">请求队列</a></li><li><a href="#%E8%AF%B7%E6%B1%82%E6%8B%A6%E6%88%AA%EF%BC%88cdp%EF%BC%89">请求拦截（CDP）</a></li><li><a href="#%E4%BB%A3%E7%90%86%E9%85%8D%E7%BD%AE">代理配置</a></li><li><a href="#tls-%E9%85%8D%E7%BD%AE">TLS 配置</a></li></ul><li><a href="#websocket">WebSocket</a></li><ul><li><a href="#%E8%BF%9E%E6%8E%A5%E5%8D%87%E7%BA%A7">连接升级</a></li><li><a href="#%E6%B6%88%E6%81%AF%E7%B1%BB%E5%9E%8B">消息类型</a></li><li><a href="#%E6%B6%88%E6%81%AF%E8%AF%BB%E5%8F%96">消息读取</a></li><li><a href="#simd-%E4%BC%98%E5%8C%96%E6%8E%A9%E7%A0%81%E5%A4%84%E7%90%86">SIMD 优化掩码处理</a></li><li><a href="#%E5%8F%91%E9%80%81%E6%B6%88%E6%81%AF">发送消息</a></li></ul><li><a href="#robots.txt-%E5%A4%84%E7%90%86">Robots.txt 处理</a></li><ul><li><a href="#%E8%A7%A3%E6%9E%90">解析</a></li><li><a href="#%E6%A8%A1%E5%BC%8F%E5%8C%B9%E9%85%8D">模式匹配</a></li><li><a href="#robot-%E5%AD%98%E5%82%A8">Robot 存储</a></li><li><a href="#%E4%B8%8E-http-%E5%AE%A2%E6%88%B7%E7%AB%AF%E7%9A%84%E9%9B%86%E6%88%90">与 HTTP 客户端的集成</a></li></ul><li><a href="#%E9%85%8D%E7%BD%AE%E5%8F%82%E8%80%83">配置参考</a></li><li><a href="#%E7%9B%B8%E5%85%B3%E4%B8%BB%E9%A2%98">相关主题</a></li></ul></nav>
+  </div>
+  <footer data-ds="footer">
+    <a href="https://docsmith.aigne.io/" target="_blank" rel="noopener noreferrer" class="docsmith-badge">
+      <svg class="docsmith-badge-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+        <polyline points="14 2 14 8 20 8"></polyline>
+        <line x1="16" y1="13" x2="8" y2="13"></line>
+        <line x1="16" y1="17" x2="8" y2="17"></line>
+        <polyline points="10 9 9 9 8 9"></polyline>
+      </svg>
+      <span>Built with <strong>AIGNE DocSmith</strong></span>
+    </a>
+  </footer>
+
+</body>
+</html>

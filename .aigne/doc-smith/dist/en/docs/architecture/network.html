@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Network Layer - lightpanda-browser</title>
+  <meta name="description" content="">
+  <meta property="og:title" content="Network Layer">
+  <meta property="og:description" content="">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="../../../assets/docsmith.css">
+  <link rel="stylesheet" href="../../../assets/theme.css">
+  <script src="../../../assets/nav.js" defer></script>
+  <script>
+    // Initialize theme from localStorage or system preference
+    (function() {
+      const stored = localStorage.getItem('docsmith-theme');
+      if (stored) {
+        document.documentElement.setAttribute('data-theme', stored);
+      } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    })();
+
+    function toggleTheme() {
+      const html = document.documentElement;
+      const current = html.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      localStorage.setItem('docsmith-theme', next);
+    }
+  </script>
+</head>
+<body data-ds-path="/architecture/network">
+  <header data-ds="header">
+    <a href="/en/index.html" class="site-title">lightpanda-browser</a>
+    <div class="header-controls">
+      
+    <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
+      <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="5"></circle>
+        <line x1="12" y1="1" x2="12" y2="3"></line>
+        <line x1="12" y1="21" x2="12" y2="23"></line>
+        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+        <line x1="1" y1="12" x2="3" y2="12"></line>
+        <line x1="21" y1="12" x2="23" y2="12"></line>
+        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+      </svg>
+      <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+      </svg>
+    </button>
+    </div>
+  </header>
+  <div data-ds="layout">
+    <aside data-ds="sidebar"><!-- nav.js 渲染 --></aside>
+    <main data-ds="content"><h1 id="network-layer" tabindex="-1">Network Layer <a class="header-anchor" href="#network-layer" aria-hidden="true">#</a></h1>
+<p>The network layer in Lightpanda handles all HTTP communication, WebSocket connections, robots.txt compliance, and proxy configuration. Built on top of libcurl, it provides a high-performance, asynchronous networking stack purpose-built for headless browser automation.</p>
+<blockquote>
+<p><strong>Parent topic:</strong> <a href="../architecture.html">Architecture</a></p>
+</blockquote>
+<h2 id="overview" tabindex="-1">Overview <a class="header-anchor" href="#overview" aria-hidden="true">#</a></h2>
+<p>Lightpanda’s network layer is composed of four main modules:</p>
+<ul>
+<li><strong>HTTP Client</strong> (<code>HttpClient.zig</code>) – the high-level client that manages connections, request queuing, transfer lifecycle, and integration with the browser page</li>
+<li><strong>HTTP Core</strong> (<code>http.zig</code>) – low-level libcurl bindings for connections, headers, and multi-handle management</li>
+<li><strong>WebSocket</strong> (<code>websocket.zig</code>) – a full WebSocket implementation used by the CDP server for real-time communication</li>
+<li><strong>Robots.txt</strong> (<code>Robots.zig</code>) – an RFC 9309-compliant parser and evaluator for robots.txt rules</li>
+</ul>
+<h2 id="http-core" tabindex="-1">HTTP Core <a class="header-anchor" href="#http-core" aria-hidden="true">#</a></h2>
+<p>The HTTP core module wraps libcurl to provide connection management, header handling, and multiplexed request processing.</p>
+<h3 id="connections" tabindex="-1">Connections <a class="header-anchor" href="#connections" aria-hidden="true">#</a></h3>
+<p>Each HTTP connection is represented by a <code>Connection</code> struct that wraps a libcurl easy handle. Connections are initialized with configuration for timeouts, redirects, proxy, TLS, and compression:</p>
+<pre><code class="language-zig">const conn = try Net.Connection.init(ca_blob, config);
+try conn.setURL(&quot;https://example.com&quot;);
+try conn.setMethod(.GET);
+const status = try conn.request(&amp;http_headers);
+</code></pre>
+<p>Key connection settings applied at initialization:</p>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Description</th>
+<th>Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>timeout_ms</code></td>
+<td>Total request timeout</td>
+<td><code>Config.httpTimeout()</code></td>
+</tr>
+<tr>
+<td><code>connect_timeout_ms</code></td>
+<td>TCP connection timeout</td>
+<td><code>Config.httpConnectTimeout()</code></td>
+</tr>
+<tr>
+<td><code>max_redirs</code></td>
+<td>Maximum redirect hops</td>
+<td><code>Config.httpMaxRedirects()</code></td>
+</tr>
+<tr>
+<td><code>follow_location</code></td>
+<td>Automatic redirect following</td>
+<td>Always enabled</td>
+</tr>
+<tr>
+<td><code>accept_encoding</code></td>
+<td>Compression support (gzip, etc.)</td>
+<td>Auto-detected</td>
+</tr>
+</tbody>
+</table>
+<h3 id="http-methods" tabindex="-1">HTTP Methods <a class="header-anchor" href="#http-methods" aria-hidden="true">#</a></h3>
+<p>The network layer supports all standard HTTP methods through the <code>Method</code> enum:</p>
+<pre><code class="language-zig">pub const Method = enum(u8) {
+    GET, PUT, POST, DELETE, HEAD, OPTIONS, PATCH, PROPFIND,
+};
+</code></pre>
+<h3 id="headers" tabindex="-1">Headers <a class="header-anchor" href="#headers" aria-hidden="true">#</a></h3>
+<p>The <code>Headers</code> struct manages request headers as a libcurl linked list. It supports iteration, cookie injection, and custom header addition:</p>
+<pre><code class="language-zig">var headers = try Net.Headers.init(user_agent_header);
+defer headers.deinit();
+try headers.add(&quot;Content-Type: application/json&quot;);
+</code></pre>
+<p>Response headers can be read through two iterator types: <code>CurlHeaderIterator</code> for live responses, and <code>ListHeaderIterator</code> for injected responses (used by CDP request interception).</p>
+<h3 id="authentication" tabindex="-1">Authentication <a class="header-anchor" href="#authentication" aria-hidden="true">#</a></h3>
+<p>The <code>AuthChallenge</code> struct parses <code>WWW-Authenticate</code> and <code>Proxy-Authenticate</code> headers, supporting Basic and Digest authentication schemes:</p>
+<pre><code class="language-zig">const challenge = try AuthChallenge.parse(status, header_value);
+// challenge.source: .server or .proxy
+// challenge.scheme: .basic or .digest
+</code></pre>
+<h3 id="multi-handle-management" tabindex="-1">Multi-Handle Management <a class="header-anchor" href="#multi-handle-management" aria-hidden="true">#</a></h3>
+<p>For concurrent requests, the <code>Handles</code> struct wraps libcurl’s multi interface. It manages a pool of connections with configurable host-level concurrency limits:</p>
+<pre><code class="language-zig">var handles = try Net.Handles.init(config);
+try handles.add(&amp;conn);
+const running = try handles.perform();
+try handles.poll(extra_fds, timeout_ms);
+</code></pre>
+<p>The multi handle uses <code>curl_multi_poll</code> for efficient I/O multiplexing, and <code>readMessage</code> retrieves completed transfer results.</p>
+<h2 id="http-client" tabindex="-1">HTTP Client <a class="header-anchor" href="#http-client" aria-hidden="true">#</a></h2>
+<p>The <code>HttpClient</code> is the high-level network client tied to a browser page. It manages the full lifecycle of HTTP requests including queuing, transfer management, robots.txt checking, and CDP network event integration.</p>
+<h3 id="request-lifecycle" tabindex="-1">Request Lifecycle <a class="header-anchor" href="#request-lifecycle" aria-hidden="true">#</a></h3>
+<ol>
+<li><strong>Request creation</strong> – A <code>Request</code> is created with URL, method, headers, and optional body</li>
+<li><strong>Robots.txt check</strong> – If robots enforcement is enabled, the client checks whether the URL is allowed before proceeding</li>
+<li><strong>Queue or execute</strong> – If connections are available, the request starts immediately; otherwise it is queued</li>
+<li><strong>Transfer</strong> – A <code>Transfer</code> object tracks the active request, manages response buffering, and handles callbacks</li>
+<li><strong>Completion</strong> – Response data is delivered, the connection is returned to the pool, and queued requests are started</li>
+</ol>
+<h3 id="connection-pooling" tabindex="-1">Connection Pooling <a class="header-anchor" href="#connection-pooling" aria-hidden="true">#</a></h3>
+<p>The client maintains connections through a doubly-linked list (<code>in_use</code>). When a transfer completes, the connection handle is recycled. The <code>max_host_connections</code> setting (from <code>Config.httpMaxHostOpen()</code>) limits concurrent connections per host, preventing resource exhaustion.</p>
+<h3 id="request-queuing" tabindex="-1">Request Queuing <a class="header-anchor" href="#request-queuing" aria-hidden="true">#</a></h3>
+<p>When all connection handles are in use, new requests are added to a <code>TransferQueue</code> (a doubly-linked list). As transfers complete, queued requests are dequeued and started automatically.</p>
+<h3 id="request-interception-(cdp)" tabindex="-1">Request Interception (CDP) <a class="header-anchor" href="#request-interception-(cdp)" aria-hidden="true">#</a></h3>
+<p>The HTTP client supports CDP network request interception. When a CDP client is attached, requests can be paused, modified, or fulfilled before they reach the network:</p>
+<pre><code class="language-zig">// CDP can intercept requests at two stages:
+// 1. Before the request is sent (Fetch.requestPaused)
+// 2. After response headers arrive (Fetch.authRequired)
+</code></pre>
+<p>The <code>intercepted</code> counter tracks paused requests so that network idle detection works correctly even when requests are held by the CDP layer.</p>
+<h3 id="proxy-configuration" tabindex="-1">Proxy Configuration <a class="header-anchor" href="#proxy-configuration" aria-hidden="true">#</a></h3>
+<p>Proxy support is configured at initialization and can be changed at runtime through CDP:</p>
+<pre><code class="language-zig">// Set via config at startup
+const http_proxy = config.httpProxy();
+
+// Changed at runtime via CDP
+client.setProxy(&quot;http://proxy.example.com:8080&quot;);
+client.restoreOriginalProxy(); // Revert to config value
+</code></pre>
+<p>Both HTTP and HTTPS proxy protocols are supported. When a proxy is configured, TLS verification settings are applied to the proxy connection as well.</p>
+<h3 id="tls-configuration" tabindex="-1">TLS Configuration <a class="header-anchor" href="#tls-configuration" aria-hidden="true">#</a></h3>
+<p>TLS verification can be controlled globally. When a CA certificate blob is provided, full host and peer verification is performed. Without it, verification can be disabled (useful for development):</p>
+<pre><code class="language-zig">conn.setTlsVerify(true, use_proxy);
+// Verifies both ssl_verify_host and ssl_verify_peer
+// Also applies to proxy if use_proxy is true
+</code></pre>
+<h2 id="websocket" tabindex="-1">WebSocket <a class="header-anchor" href="#websocket" aria-hidden="true">#</a></h2>
+<p>The WebSocket module implements the WebSocket protocol (RFC 6455) for the CDP server. It handles the upgrade handshake, message framing, and bidirectional communication.</p>
+<h3 id="connection-upgrade" tabindex="-1">Connection Upgrade <a class="header-anchor" href="#connection-upgrade" aria-hidden="true">#</a></h3>
+<p>The upgrade process validates the HTTP upgrade request, checking for required headers (<code>Upgrade</code>, <code>Connection</code>, <code>Sec-WebSocket-Key</code>, <code>Sec-WebSocket-Version</code>) and computing the <code>Sec-WebSocket-Accept</code> response using SHA-1:</p>
+<pre><code class="language-zig">try ws_conn.upgrade(request);
+// Validates HTTP/1.1, required headers
+// Responds with 101 Switching Protocols
+</code></pre>
+<h3 id="message-types" tabindex="-1">Message Types <a class="header-anchor" href="#message-types" aria-hidden="true">#</a></h3>
+<p>The WebSocket implementation supports all standard frame types:</p>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>text</code></td>
+<td>UTF-8 text data (primary type for CDP JSON messages)</td>
+</tr>
+<tr>
+<td><code>binary</code></td>
+<td>Binary data frames</td>
+</tr>
+<tr>
+<td><code>close</code></td>
+<td>Connection close with status code</td>
+</tr>
+<tr>
+<td><code>ping</code></td>
+<td>Keep-alive ping</td>
+</tr>
+<tr>
+<td><code>pong</code></td>
+<td>Keep-alive pong response</td>
+</tr>
+</tbody>
+</table>
+<h3 id="message-reading" tabindex="-1">Message Reading <a class="header-anchor" href="#message-reading" aria-hidden="true">#</a></h3>
+<p>The <code>Reader</code> is a streaming parser that handles WebSocket framing, including variable-length headers, masking (client-to-server), and message fragmentation:</p>
+<pre><code class="language-zig">var reader = try websocket.Reader(true).init(allocator);
+// true = expect masked frames (from client)
+
+while (try reader.next()) |msg| {
+    switch (msg.type) {
+        .text =&gt; handleCDPMessage(msg.data),
+        .ping =&gt; try ws.sendPong(msg.data),
+        .close =&gt; break,
+    }
+}
+</code></pre>
+<p>The reader uses a dynamically growing buffer (starting at 16KB) and supports messages up to <code>CDP_MAX_MESSAGE_SIZE</code>. Fragmented messages are reassembled automatically.</p>
+<h3 id="simd-optimized-masking" tabindex="-1">SIMD-Optimized Masking <a class="header-anchor" href="#simd-optimized-masking" aria-hidden="true">#</a></h3>
+<p>Client-to-server WebSocket frames are XOR-masked per the protocol specification. Lightpanda uses SIMD instructions when available for efficient unmasking:</p>
+<pre><code class="language-zig">// Uses std.simd.suggestVectorLength for platform-optimal
+// vector width, falling back to scalar XOR for small payloads
+</code></pre>
+<h3 id="sending-messages" tabindex="-1">Sending Messages <a class="header-anchor" href="#sending-messages" aria-hidden="true">#</a></h3>
+<p>The <code>WsConnection</code> provides several send methods optimized for different use cases:</p>
+<ul>
+<li><code>sendJSON</code> – Serializes a Zig struct to JSON and frames it as a WebSocket text message. Reserves 10 bytes for the variable-length header to avoid a separate allocation.</li>
+<li><code>sendPong</code> – Responds to ping frames</li>
+<li><code>sendHttpError</code> – Sends an HTTP error response before the WebSocket upgrade</li>
+</ul>
+<p>The send path handles <code>WouldBlock</code> by temporarily switching the socket to blocking mode, avoiding the need for a write queue.</p>
+<h2 id="robots.txt-handling" tabindex="-1">Robots.txt Handling <a class="header-anchor" href="#robots.txt-handling" aria-hidden="true">#</a></h2>
+<p>The robots.txt module implements RFC 9309 for web crawler access control. This is particularly important for Lightpanda’s use in scraping and automation scenarios.</p>
+<h3 id="parsing" tabindex="-1">Parsing <a class="header-anchor" href="#parsing" aria-hidden="true">#</a></h3>
+<p>The parser processes robots.txt files line by line, extracting <code>User-agent</code>, <code>Allow</code>, and <code>Disallow</code> directives. It handles:</p>
+<ul>
+<li>UTF-8 BOM stripping</li>
+<li>Inline comments</li>
+<li>Case-insensitive user-agent matching</li>
+<li>Multiple user-agent entries per rule group</li>
+<li>Wildcard (<code>*</code>) user-agent fallback</li>
+</ul>
+<pre><code class="language-zig">var robots = try Robots.fromBytes(allocator, &quot;MyBot&quot;, robots_txt_content);
+defer robots.deinit(allocator);
+</code></pre>
+<h3 id="pattern-matching" tabindex="-1">Pattern Matching <a class="header-anchor" href="#pattern-matching" aria-hidden="true">#</a></h3>
+<p>Three pattern types are supported:</p>
+<table>
+<thead>
+<tr>
+<th>Pattern</th>
+<th>Example</th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Prefix</strong></td>
+<td><code>/admin/</code></td>
+<td>Matches any path starting with the pattern</td>
+</tr>
+<tr>
+<td><strong>Exact</strong></td>
+<td><code>/admin$</code></td>
+<td>Matches the path exactly (trailing <code>$</code> anchor)</td>
+</tr>
+<tr>
+<td><strong>Wildcard</strong></td>
+<td><code>/*.php</code></td>
+<td><code>*</code> matches zero or more characters</td>
+</tr>
+</tbody>
+</table>
+<p>Rules are sorted by pattern length (longest first), with <code>Allow</code> winning ties. This ensures the most specific rule takes precedence.</p>
+<h3 id="robot-store" tabindex="-1">Robot Store <a class="header-anchor" href="#robot-store" aria-hidden="true">#</a></h3>
+<p>The <code>RobotStore</code> provides thread-safe caching of parsed robots.txt files per domain. It uses a case-insensitive hash map protected by a mutex:</p>
+<pre><code class="language-zig">// Check cache first
+if (store.get(domain)) |entry| {
+    switch (entry) {
+        .present =&gt; |robots| return robots.isAllowed(path),
+        .absent =&gt; return true, // No robots.txt found
+    }
+}
+
+// Fetch and cache
+const robots = try store.robotsFromBytes(user_agent, bytes);
+try store.put(domain, robots);
+</code></pre>
+<p>When a robots.txt file is not found (HTTP 404), the store records it as <code>.absent</code> to avoid repeated fetches.</p>
+<h3 id="integration-with-http-client" tabindex="-1">Integration with HTTP Client <a class="header-anchor" href="#integration-with-http-client" aria-hidden="true">#</a></h3>
+<p>The HTTP client integrates robots.txt checking into the request lifecycle. When robots enforcement is enabled, the client:</p>
+<ol>
+<li>Checks the <code>RobotStore</code> cache for the target domain</li>
+<li>If not cached, queues the original request and fetches the robots.txt first</li>
+<li>Evaluates the rules against the request path</li>
+<li>Proceeds or blocks the request based on the result</li>
+</ol>
+<p>Multiple requests to the same uncached domain are batched in a <code>pending_robots_queue</code> so that only one robots.txt fetch is made per domain.</p>
+<h2 id="configuration-reference" tabindex="-1">Configuration Reference <a class="header-anchor" href="#configuration-reference" aria-hidden="true">#</a></h2>
+<p>The network layer is configured through the <code>Config</code> module. Key settings:</p>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Method</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>HTTP timeout</td>
+<td><code>httpTimeout()</code></td>
+<td>Total request timeout in milliseconds</td>
+</tr>
+<tr>
+<td>Connect timeout</td>
+<td><code>httpConnectTimeout()</code></td>
+<td>TCP connection timeout in milliseconds</td>
+</tr>
+<tr>
+<td>Max redirects</td>
+<td><code>httpMaxRedirects()</code></td>
+<td>Maximum number of HTTP redirects to follow</td>
+</tr>
+<tr>
+<td>Max host connections</td>
+<td><code>httpMaxHostOpen()</code></td>
+<td>Concurrent connections per host</td>
+</tr>
+<tr>
+<td>HTTP proxy</td>
+<td><code>httpProxy()</code></td>
+<td>Proxy URL (HTTP/HTTPS)</td>
+</tr>
+<tr>
+<td>TLS verify</td>
+<td><code>tlsVerifyHost()</code></td>
+<td>Enable/disable TLS certificate verification</td>
+</tr>
+</tbody>
+</table>
+<h2 id="related-topics" tabindex="-1">Related Topics <a class="header-anchor" href="#related-topics" aria-hidden="true">#</a></h2>
+<ul>
+<li><a href="../architecture.html">Architecture</a> – Overall system architecture</li>
+<li><a href="../architecture/browser-engine.html">Browser Engine</a> – How the browser engine uses the network layer</li>
+<li><a href="../architecture/cdp.html">CDP Protocol</a> – CDP protocol implementation that communicates over WebSocket</li>
+</ul>
+</main>
+    <nav data-ds="toc"><div class="toc-title">On this page</div><ul><li><a href="#overview">Overview</a></li><li><a href="#http-core">HTTP Core</a></li><ul><li><a href="#connections">Connections</a></li><li><a href="#http-methods">HTTP Methods</a></li><li><a href="#headers">Headers</a></li><li><a href="#authentication">Authentication</a></li><li><a href="#multi-handle-management">Multi-Handle Management</a></li></ul><li><a href="#http-client">HTTP Client</a></li><ul><li><a href="#request-lifecycle">Request Lifecycle</a></li><li><a href="#connection-pooling">Connection Pooling</a></li><li><a href="#request-queuing">Request Queuing</a></li><li><a href="#request-interception-(cdp)">Request Interception (CDP)</a></li><li><a href="#proxy-configuration">Proxy Configuration</a></li><li><a href="#tls-configuration">TLS Configuration</a></li></ul><li><a href="#websocket">WebSocket</a></li><ul><li><a href="#connection-upgrade">Connection Upgrade</a></li><li><a href="#message-types">Message Types</a></li><li><a href="#message-reading">Message Reading</a></li><li><a href="#simd-optimized-masking">SIMD-Optimized Masking</a></li><li><a href="#sending-messages">Sending Messages</a></li></ul><li><a href="#robots.txt-handling">Robots.txt Handling</a></li><ul><li><a href="#parsing">Parsing</a></li><li><a href="#pattern-matching">Pattern Matching</a></li><li><a href="#robot-store">Robot Store</a></li><li><a href="#integration-with-http-client">Integration with HTTP Client</a></li></ul><li><a href="#configuration-reference">Configuration Reference</a></li><li><a href="#related-topics">Related Topics</a></li></ul></nav>
+  </div>
+  <footer data-ds="footer">
+    <a href="https://docsmith.aigne.io/" target="_blank" rel="noopener noreferrer" class="docsmith-badge">
+      <svg class="docsmith-badge-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+        <polyline points="14 2 14 8 20 8"></polyline>
+        <line x1="16" y1="13" x2="8" y2="13"></line>
+        <line x1="16" y1="17" x2="8" y2="17"></line>
+        <polyline points="10 9 9 9 8 9"></polyline>
+      </svg>
+      <span>Built with <strong>AIGNE DocSmith</strong></span>
+    </a>
+  </footer>
+
+</body>
+</html>

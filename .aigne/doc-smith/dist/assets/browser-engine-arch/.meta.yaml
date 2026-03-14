@@ -1,0 +1,9 @@
+kind: image
+generation:
+  prompt: "Lightpanda browser engine architecture showing the relationship between Browser, Session, Page, ScriptManager, Parser, and JS Env components with data flow arrows"
+  model: google/gemini-3-pro-image-preview
+  createdAt: "2026-03-14T10:00:00Z"
+documents:
+  - path: /architecture/browser-engine
+languages:
+  - en

@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quick Start - lightpanda-browser</title>
+  <meta name="description" content="">
+  <meta property="og:title" content="Quick Start">
+  <meta property="og:description" content="">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="../../assets/docsmith.css">
+  <link rel="stylesheet" href="../../assets/theme.css">
+  <script src="../../assets/nav.js" defer></script>
+  <script>
+    // Initialize theme from localStorage or system preference
+    (function() {
+      const stored = localStorage.getItem('docsmith-theme');
+      if (stored) {
+        document.documentElement.setAttribute('data-theme', stored);
+      } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    })();
+
+    function toggleTheme() {
+      const html = document.documentElement;
+      const current = html.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      localStorage.setItem('docsmith-theme', next);
+    }
+  </script>
+</head>
+<body data-ds-path="/quick-start">
+  <header data-ds="header">
+    <a href="/en/index.html" class="site-title">lightpanda-browser</a>
+    <div class="header-controls">
+      
+    <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
+      <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="5"></circle>
+        <line x1="12" y1="1" x2="12" y2="3"></line>
+        <line x1="12" y1="21" x2="12" y2="23"></line>
+        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+        <line x1="1" y1="12" x2="3" y2="12"></line>
+        <line x1="21" y1="12" x2="23" y2="12"></line>
+        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+      </svg>
+      <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+      </svg>
+    </button>
+    </div>
+  </header>
+  <div data-ds="layout">
+    <aside data-ds="sidebar"><!-- nav.js 渲染 --></aside>
+    <main data-ds="content"><h1 id="quick-start" tabindex="-1">Quick Start <a class="header-anchor" href="#quick-start" aria-hidden="true">#</a></h1>
+<p>Get up and running with Lightpanda Browser in minutes. This guide walks you through downloading the browser, running your first page fetch, and connecting automation clients via the Chrome DevTools Protocol (CDP).</p>
+<blockquote>
+<p><strong>Prerequisites:</strong> A Linux x86_64, macOS aarch64, or Windows + WSL2 environment. For Docker, any platform with Docker Engine installed.</p>
+</blockquote>
+<h2 id="installation" tabindex="-1">Installation <a class="header-anchor" href="#installation" aria-hidden="true">#</a></h2>
+<p>Lightpanda ships as a single static binary with no external dependencies at runtime. You can install it from nightly builds or run it via Docker.</p>
+<h3 id="download-the-binary" tabindex="-1">Download the Binary <a class="header-anchor" href="#download-the-binary" aria-hidden="true">#</a></h3>
+<p><strong>Linux:</strong></p>
+<pre><code class="language-console">curl -L -o lightpanda https://github.com/lightpanda-io/browser/releases/download/nightly/lightpanda-x86_64-linux &amp;&amp; \
+chmod a+x ./lightpanda
+</code></pre>
+<p><strong>macOS (Apple Silicon):</strong></p>
+<pre><code class="language-console">curl -L -o lightpanda https://github.com/lightpanda-io/browser/releases/download/nightly/lightpanda-aarch64-macos &amp;&amp; \
+chmod a+x ./lightpanda
+</code></pre>
+<p><strong>Windows + WSL2:</strong> Install from a WSL terminal using the Linux instructions above.</p>
+<h3 id="run-with-docker" tabindex="-1">Run with Docker <a class="header-anchor" href="#run-with-docker" aria-hidden="true">#</a></h3>
+<p>Lightpanda provides <a href="https://hub.docker.com/r/lightpanda/browser">official Docker images</a> for both amd64 and arm64 architectures:</p>
+<pre><code class="language-console">docker run -d --name lightpanda -p 9222:9222 lightpanda/browser:nightly
+</code></pre>
+<p>This starts the CDP server on port 9222, ready to accept automation connections.</p>
+<p>For detailed platform-specific instructions, build options, and verification steps, see <a href="quick-start/installation.html">Installation</a>.</p>
+<h2 id="fetch-a-page" tabindex="-1">Fetch a Page <a class="header-anchor" href="#fetch-a-page" aria-hidden="true">#</a></h2>
+<p>The simplest way to verify your installation is to dump a URL. Lightpanda fetches the page, executes JavaScript, and outputs the resulting DOM:</p>
+<pre><code class="language-console">./lightpanda fetch --obey_robots --log_format pretty --log_level info https://example.com
+</code></pre>
+<p>The <code>--obey_robots</code> flag respects the site’s <code>robots.txt</code> rules. This command is useful for quick testing and for scraping scenarios where you need the fully rendered HTML output.</p>
+<h2 id="start-the-cdp-server" tabindex="-1">Start the CDP Server <a class="header-anchor" href="#start-the-cdp-server" aria-hidden="true">#</a></h2>
+<p>Lightpanda implements the <a href="https://chromedevtools.github.io/devtools-protocol/">Chrome DevTools Protocol</a>, allowing you to control the browser with standard automation tools like Puppeteer, Playwright, and chromedp.</p>
+<p>Start the server:</p>
+<pre><code class="language-console">./lightpanda serve --host 127.0.0.1 --port 9222
+</code></pre>
+<p>The server listens for WebSocket connections on the specified host and port. Once running, any CDP-compatible client can connect.</p>
+<h3 id="connect-with-puppeteer" tabindex="-1">Connect with Puppeteer <a class="header-anchor" href="#connect-with-puppeteer" aria-hidden="true">#</a></h3>
+<pre><code class="language-js">import puppeteer from 'puppeteer-core';
+
+const browser = await puppeteer.connect({
+  browserWSEndpoint: &quot;ws://127.0.0.1:9222&quot;,
+});
+
+const page = await (await browser.createBrowserContext()).newPage();
+await page.goto('https://example.com', { waitUntil: &quot;networkidle0&quot; });
+console.log(await page.title());
+await browser.disconnect();
+</code></pre>
+<h3 id="connect-with-playwright" tabindex="-1">Connect with Playwright <a class="header-anchor" href="#connect-with-playwright" aria-hidden="true">#</a></h3>
+<pre><code class="language-js">import { chromium } from 'playwright';
+
+const browser = await chromium.connectOverCDP(&quot;http://127.0.0.1:9222&quot;);
+const page = await browser.contexts()[0].newPage();
+await page.goto('https://example.com');
+console.log(await page.title());
+await browser.close();
+</code></pre>
+<p>For the full list of supported CDP domains, connection options, and troubleshooting, see <a href="quick-start/cdp-server.html">CDP Server</a>.</p>
+<h2 id="performance-at-a-glance" tabindex="-1">Performance at a Glance <a class="header-anchor" href="#performance-at-a-glance" aria-hidden="true">#</a></h2>
+<p>Lightpanda is built from scratch in Zig, specifically for headless use cases. Compared to headless Chrome:</p>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Lightpanda</th>
+<th>Chrome</th>
+<th>Improvement</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Memory per page</td>
+<td>~10 MB</td>
+<td>~90 MB</td>
+<td><strong>9x less</strong></td>
+</tr>
+<tr>
+<td>Page execution</td>
+<td>~50 ms</td>
+<td>~550 ms</td>
+<td><strong>11x faster</strong></td>
+</tr>
+<tr>
+<td>Startup time</td>
+<td>Instant</td>
+<td>~500 ms</td>
+<td>Near-zero</td>
+</tr>
+</tbody>
+</table>
+<p>These benchmarks were measured using Puppeteer to request 100 pages from a local website on an AWS EC2 m5.large instance. See the <a href="https://github.com/lightpanda-io/demo">benchmark details</a> for methodology.</p>
+<h2 id="telemetry" tabindex="-1">Telemetry <a class="header-anchor" href="#telemetry" aria-hidden="true">#</a></h2>
+<p>By default, Lightpanda collects anonymous usage telemetry to help improve the product. To disable it, set an environment variable:</p>
+<pre><code class="language-console">export LIGHTPANDA_DISABLE_TELEMETRY=true
+</code></pre>
+<p>Read the full <a href="https://lightpanda.io/privacy-policy">privacy policy</a> for details on what is collected.</p>
+<h2 id="current-status" tabindex="-1">Current Status <a class="header-anchor" href="#current-status" aria-hidden="true">#</a></h2>
+<p>Lightpanda is in <strong>Beta</strong>. The following features are implemented and stable:</p>
+<ul>
+<li>JavaScript execution via V8</li>
+<li>DOM tree and DOM APIs</li>
+<li>HTML parsing (html5ever)</li>
+<li>Ajax (XHR and Fetch APIs)</li>
+<li>CDP/WebSocket server</li>
+<li>Click and form input interactions</li>
+<li>Cookies and custom HTTP headers</li>
+<li>Proxy support and network interception</li>
+<li><code>robots.txt</code> compliance</li>
+</ul>
+<p>Web API coverage continues to expand. If you encounter missing APIs or unexpected behavior, please <a href="https://github.com/lightpanda-io/browser/issues">open an issue</a>.</p>
+<h2 id="next-steps" tabindex="-1">Next Steps <a class="header-anchor" href="#next-steps" aria-hidden="true">#</a></h2>
+<ul>
+<li><a href="quick-start/installation.html">Installation</a> – Detailed platform instructions, Docker configuration, and verification</li>
+<li><a href="quick-start/cdp-server.html">CDP Server</a> – Full CDP setup, supported domains, and client integration guides</li>
+<li><a href="architecture.html">Architecture</a> – Understand the internals: browser engine, network layer, and CDP implementation</li>
+<li><a href="building.html">Building from Source</a> – Compile Lightpanda from source with Zig</li>
+</ul>
+</main>
+    <nav data-ds="toc"><div class="toc-title">On this page</div><ul><li><a href="#installation">Installation</a></li><ul><li><a href="#download-the-binary">Download the Binary</a></li><li><a href="#run-with-docker">Run with Docker</a></li></ul><li><a href="#fetch-a-page">Fetch a Page</a></li><li><a href="#start-the-cdp-server">Start the CDP Server</a></li><ul><li><a href="#connect-with-puppeteer">Connect with Puppeteer</a></li><li><a href="#connect-with-playwright">Connect with Playwright</a></li></ul><li><a href="#performance-at-a-glance">Performance at a Glance</a></li><li><a href="#telemetry">Telemetry</a></li><li><a href="#current-status">Current Status</a></li><li><a href="#next-steps">Next Steps</a></li></ul></nav>
+  </div>
+  <footer data-ds="footer">
+    <a href="https://docsmith.aigne.io/" target="_blank" rel="noopener noreferrer" class="docsmith-badge">
+      <svg class="docsmith-badge-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+        <polyline points="14 2 14 8 20 8"></polyline>
+        <line x1="16" y1="13" x2="8" y2="13"></line>
+        <line x1="16" y1="17" x2="8" y2="17"></line>
+        <polyline points="10 9 9 9 8 9"></polyline>
+      </svg>
+      <span>Built with <strong>AIGNE DocSmith</strong></span>
+    </a>
+  </footer>
+
+</body>
+</html>
